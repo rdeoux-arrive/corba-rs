@@ -1,0 +1,10 @@
+[package]
+name = "corba"
+version = "0.1.0"
+authors = ["Romain Déoux <ext-romain.deoux@flowbird.group>"]
+description = "Library to implement GIOP services and clients"
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
