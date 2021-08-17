@@ -172,7 +172,7 @@ pub struct ReplyHeader {
     pub reply_status: ReplyStatusType,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SystemExceptionReplyBody {
     pub exception_id: String,
     pub minor_code_value: u32,

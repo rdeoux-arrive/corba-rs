@@ -9,6 +9,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::io::{BufWriter, Cursor, Read, Write};
 
+#[derive(Debug)]
 pub enum Error<T> {
     Cdr(cdr::Error),
     Message,
