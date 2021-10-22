@@ -4,7 +4,9 @@ use serde::de::{self, Deserialize, DeserializeSeed, Visitor};
 use std::io::{self, Read};
 
 macro_rules! from_bits {
-    ($v:expr => $t:ident) => { $t::from_le_bytes($v.to_le_bytes())};
+    ($v:expr => $t:ident) => {
+        $t::from_le_bytes($v.to_le_bytes())
+    };
 }
 
 pub struct Deserializer<R>
@@ -481,10 +483,8 @@ where
             R: Read,
         {
             type Error = Error;
-            fn next_element_seed<T>(
-                &mut self,
-                seed: T,
-            ) -> std::result::Result<Option<T::Value>, Self::Error>
+
+            fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
             where
                 T: DeserializeSeed<'de>,
             {
@@ -528,20 +528,85 @@ where
         self,
         name: &'static str,
         _variants: &'static [&'static str],
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
+        struct VariantAccess;
+
+        impl<'de> de::VariantAccess<'de> for VariantAccess {
+            type Error = Error;
+            fn unit_variant(self) -> Result<()> {
+                Ok(())
+            }
+
+            fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value>
+            where
+                T: de::DeserializeSeed<'de>,
+            {
+                unimplemented!()
+            }
+
+            fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
+            where
+                V: de::Visitor<'de>,
+            {
+                unimplemented!()
+            }
+
+            fn struct_variant<V>(
+                self,
+                _fields: &'static [&'static str],
+                _visitor: V,
+            ) -> Result<V::Value>
+            where
+                V: de::Visitor<'de>,
+            {
+                unimplemented!()
+            }
+        }
+
+        struct EnumAccess<'a, R>
+        where
+            R: Read,
+        {
+            de: &'a mut Deserializer<R>,
+        }
+
+        impl<'a, 'de, R> de::EnumAccess<'de> for EnumAccess<'a, R>
+        where
+            R: Read,
+        {
+            type Error = Error;
+            type Variant = VariantAccess;
+
+            fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
+            where
+                V: de::DeserializeSeed<'de>,
+            {
+                seed.deserialize(&mut *self.de).map(|v| (v, VariantAccess))
+            }
+        }
+
         trace!("{}deserialize enum {}...", self.indent, name);
-        unimplemented!()
+        self.push_indent();
+        let v = visitor.visit_enum(EnumAccess { de: self });
+        self.pop_indent();
+        trace!("{}deserialize enum {} done...", self.indent, name);
+        v
     }
 
-    fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        unimplemented!()
+        trace!("{}deserialize identifier...", self.indent);
+        self.push_indent();
+        let v = visitor.visit_u32(self.read_u32()?);
+        self.pop_indent();
+        trace!("{}deserialize identifier done...", self.indent);
+        v
     }
 
     fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value>
