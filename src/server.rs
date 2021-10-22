@@ -86,7 +86,7 @@ where
         }
     }
 
-    pub fn reply_user_exception<T>(self, err: T) -> cdr::Result<()>
+    pub fn reply_user_exception<T>(self, exception_id: &str, err: T) -> cdr::Result<()>
     where
         T: Serialize,
     {
@@ -98,7 +98,7 @@ where
                     request_id: self.request_id,
                     reply_status: giop10::ReplyStatusType::UserException,
                 };
-                self.reply(header, err)
+                self.reply(header, (exception_id, err))
             }
             _ => {
                 let header = giop12::ReplyHeader {
@@ -106,7 +106,7 @@ where
                     reply_status: giop12::ReplyStatusType::UserException,
                     service_context: Vec::<iop::ServiceContext>::default(),
                 };
-                self.reply(header, err)
+                self.reply(header, (exception_id, err))
             }
         }
     }
