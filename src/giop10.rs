@@ -175,7 +175,7 @@ pub struct ReplyHeader {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SystemExceptionReplyBody {
-    pub exception_id: String,
+    pub exception_id: &'static str,
     pub minor_code_value: u32,
     pub completion_status: u32,
 }
@@ -185,7 +185,7 @@ macro_rules! exception {
         impl From<crate::corba::$n> for SystemExceptionReplyBody {
             fn from(exc: crate::corba::$n) -> Self {
                 Self {
-                    exception_id: stringify!($m).to_string(),
+                    exception_id: stringify!($m),
                     minor_code_value: exc.minor,
                     completion_status: exc.completed as u32,
                 }
