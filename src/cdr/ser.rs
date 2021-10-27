@@ -14,7 +14,9 @@ where
 }
 
 macro_rules! from_bits {
-    ($v:ident as $t:ident) => { $t::from_le_bytes($v.to_le_bytes())};
+    ($v:ident as $t:ident) => {
+        $t::from_le_bytes($v.to_le_bytes())
+    };
 }
 
 pub fn to_bytes<T>(le: bool, value: &T) -> Result<Vec<u8>>

@@ -18,7 +18,7 @@ macro_rules! exception {
             pub minor: u32,
             pub completed: CompletionStatus,
         }
-    }
+    };
 }
 
 // the unknown exception
