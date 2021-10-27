@@ -8,6 +8,7 @@ use std::io::{Read, Write};
 
 pub use crate::giop10::{ReplyHeader, SystemExceptionReplyBody};
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MsgType {
     Request,
     Reply,

@@ -124,7 +124,7 @@ impl RequestHeader {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub enum ReplyStatusType {
     NoException,
     UserException,

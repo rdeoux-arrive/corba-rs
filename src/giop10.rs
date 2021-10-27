@@ -5,6 +5,7 @@ use crate::iop::{ObjectKey, ServiceContextList};
 use serde::{de, ser, Deserialize, Serialize};
 use std::io::{Read, Write};
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MsgType {
     Request,
     Reply,
@@ -157,7 +158,7 @@ pub struct RequestHeader {
     pub requesting_principal: OctetSeq,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub enum ReplyStatusType {
     NoException,
     UserException,

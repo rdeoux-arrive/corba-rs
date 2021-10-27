@@ -1,9 +1,11 @@
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CompletionStatus {
     CompletedYes,
     CompletedNo,
     CompletedMaybe,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ExceptionType {
     NoException,
     UserException,

@@ -28,7 +28,7 @@ impl Serialize for Magicn {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Version {
     GIOP10,
     GIOP11,
