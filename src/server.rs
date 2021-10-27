@@ -121,7 +121,7 @@ where
             Version::GIOP10 => giop10::MessageHeader::new(giop10::MsgType::Reply)
                 .with_byte_order(self.byte_order)
                 .serialize(cursor),
-            _ => giop11::MessageHeader::new(self.version.clone(), giop11::MsgType::Reply)
+            _ => giop11::MessageHeader::new(self.version, giop11::MsgType::Reply)
                 .with_flags(if self.byte_order { 1 } else { 0 })
                 .serialize(cursor),
         }?;
