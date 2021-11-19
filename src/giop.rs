@@ -1,13 +1,13 @@
-use crate::cdr::{Deserializer, Result, Serializer};
+use crate::cdr::{self, Deserializer, Serializer};
 use crate::{giop10, giop11, giop12, giop13};
+use alloc::format;
 use serde::{de, ser, Deserialize, Serialize};
-use std::io::{Read, Write};
 
 #[derive(Clone, Debug)]
 pub struct Magicn;
 
 impl<'de> Deserialize<'de> for Magicn {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
@@ -20,7 +20,7 @@ impl<'de> Deserialize<'de> for Magicn {
 }
 
 impl Serialize for Magicn {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
@@ -49,7 +49,7 @@ impl Version {
 }
 
 impl<'de> Deserialize<'de> for Version {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
@@ -71,7 +71,7 @@ impl<'de> Deserialize<'de> for Version {
 }
 
 impl Serialize for Version {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
@@ -92,11 +92,8 @@ pub enum MessageHeader {
 }
 
 impl MessageHeader {
-    pub fn deserialize<R>(reader: R) -> Result<(Self, Deserializer<R>)>
-    where
-        R: Read,
-    {
-        let mut de = Deserializer::from_reader(reader);
+    pub fn deserialize<'a>(buf: &'a [u8]) -> cdr::Result<(Self, Deserializer<'a>)> {
+        let mut de = Deserializer::from(buf);
         let magic = Magicn::deserialize(&mut de)?;
         let giop_version = Version::deserialize(&mut de)?;
         match giop_version {
@@ -139,15 +136,13 @@ impl MessageHeader {
         }
     }
 
-    pub fn serialize<W>(self, writer: W) -> Result<Serializer<W>>
+    pub fn serialize<T>(self) -> cdr::Result<Serializer<T>>
     where
-        W: Write,
+        T: Extend<u8> + Default,
     {
         match self {
-            Self::V1_0(header) => header.serialize(writer),
-            Self::V1_1(header) | Self::V1_2(header) | Self::V1_3(header) => {
-                header.serialize(writer)
-            }
+            Self::V1_0(header) => header.serialize(),
+            Self::V1_1(header) | Self::V1_2(header) | Self::V1_3(header) => header.serialize(),
         }
     }
 }

@@ -1,10 +1,10 @@
-use crate::cdr::{Deserializer, Result, Serializer};
+use crate::cdr::{self, Deserializer, Serializer};
 use crate::corba::OctetSeq;
 use crate::giop::{Magicn, Version};
 use crate::iop::ObjectKey;
 use crate::iop::ServiceContextList;
+use alloc::string::String;
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
 
 pub use crate::giop10::{ReplyHeader, SystemExceptionReplyBody};
 
@@ -66,11 +66,8 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize<R>(reader: R) -> Result<(Self, Deserializer<R>)>
-    where
-        R: Read,
-    {
-        let mut de = Deserializer::from_reader(reader);
+    pub fn deserialize<'a>(buf: &'a [u8]) -> cdr::Result<(Self, Deserializer<'a>)> {
+        let mut de = Deserializer::from(buf);
         let (magic, giop_version, flags) = <(Magicn, Version, u8)>::deserialize(&mut de)?;
         let mut de = de.with_le(flags & 1 != 0);
         let (message_type, message_size) = <(u8, u32)>::deserialize(&mut de)?;
@@ -86,11 +83,11 @@ impl MessageHeader {
         ))
     }
 
-    pub fn serialize<W>(&self, writer: W) -> Result<Serializer<W>>
+    pub fn serialize<T>(&self) -> cdr::Result<Serializer<T>>
     where
-        W: Write,
+        T: Extend<u8> + Default,
     {
-        let mut serializer = Serializer::new(writer).with_le(self.flags & 1 != 0);
+        let mut serializer = Serializer::default().with_le(self.flags & 1 != 0);
         Serialize::serialize(&self, &mut serializer)?;
         Ok(serializer)
     }

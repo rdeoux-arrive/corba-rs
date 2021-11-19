@@ -1,4 +1,8 @@
 use crate::iop::{ObjectKey, ServiceContextList, TaggedProfile, IOR};
+use alloc::borrow::ToOwned;
+use alloc::format;
+use alloc::string::String;
+use core::fmt::{self, Formatter};
 use serde::de::{Error, SeqAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -24,7 +28,7 @@ pub enum TargetAddress {
 }
 
 impl<'de> Deserialize<'de> for TargetAddress {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -33,11 +37,11 @@ impl<'de> Deserialize<'de> for TargetAddress {
         impl<'de> Visitor<'de> for TargetAddressVisitor {
             type Value = TargetAddress;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
                 formatter.write_str("a valid TargetAddress")
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
                 A: SeqAccess<'de>,
             {
@@ -77,7 +81,7 @@ impl<'de> Deserialize<'de> for TargetAddress {
 }
 
 impl Serialize for TargetAddress {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

@@ -1,7 +1,10 @@
 use super::error::{Error, Result};
+use super::indent::Indent;
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
 use log::{trace, warn};
 use serde::de::{self, Deserialize, DeserializeSeed, Visitor};
-use std::io::{self, Read};
 
 macro_rules! from_bits {
     ($v:expr => $t:ident) => {
@@ -9,56 +12,27 @@ macro_rules! from_bits {
     };
 }
 
-pub struct Deserializer<R>
-where
-    R: Read,
-{
-    reader: R,
+pub struct Deserializer<'a> {
+    bytes: &'a [u8],
     align: usize,
     le: bool,
-    indent: String,
+    indent: Indent,
 }
 
-impl<R> Deserializer<R>
-where
-    R: Read,
-{
-    pub fn from_reader(reader: R) -> Self {
+impl Deserializer<'_> {
+    pub fn with_le(self, le: bool) -> Self {
+        Self { le, ..self }
+    }
+}
+
+impl<'a> From<&'a [u8]> for Deserializer<'a> {
+    fn from(bytes: &'a [u8]) -> Self {
         Self {
-            reader,
+            bytes,
             align: 0,
             le: false,
-            indent: String::new(),
+            indent: Indent::default(),
         }
-    }
-
-    pub fn with_le(self, le: bool) -> Self {
-        Self {
-            reader: self.reader,
-            align: self.align,
-            le,
-            indent: self.indent,
-        }
-    }
-
-    pub fn reader(&self) -> &R {
-        &self.reader
-    }
-
-    pub fn reader_mut(&mut self) -> &mut R {
-        &mut self.reader
-    }
-
-    pub fn into_inner(self) -> R {
-        self.reader
-    }
-
-    fn push_indent(&mut self) {
-        self.indent.push_str("  ")
-    }
-
-    fn pop_indent(&mut self) {
-        self.indent.truncate(self.indent.len() - 2)
     }
 }
 
@@ -66,29 +40,18 @@ pub fn from_bytes<'de, T>(buf: &[u8]) -> Result<T>
 where
     T: Deserialize<'de>,
 {
-    from_reader(buf)
-}
-
-pub fn from_reader<'de, R, T>(reader: R) -> Result<T>
-where
-    R: Read,
-    T: Deserialize<'de>,
-{
-    let mut deserializer = Deserializer::from_reader(reader);
+    let mut deserializer = Deserializer::from(buf);
     T::deserialize(&mut deserializer)
 }
 
-impl<R> Deserializer<R>
-where
-    R: Read,
-{
-    fn read_u8(&mut self) -> io::Result<u8> {
+impl Deserializer<'_> {
+    fn read_u8(&mut self) -> Result<u8> {
         let mut buf = [0];
         self.read_exact(&mut buf)?;
         Ok(buf[0])
     }
 
-    fn read_u16(&mut self) -> io::Result<u16> {
+    fn read_u16(&mut self) -> Result<u16> {
         if self.align & 1 != 0 {
             let mut buf = [0];
             self.read_exact(&mut buf)?;
@@ -105,7 +68,7 @@ where
         })
     }
 
-    fn read_u32(&mut self) -> io::Result<u32> {
+    fn read_u32(&mut self) -> Result<u32> {
         if self.align & 3 != 0 {
             let mut buf = &mut [0; 3][..(!self.align + 1) & 3];
             self.read_exact(&mut buf)?;
@@ -122,7 +85,7 @@ where
         })
     }
 
-    fn read_u64(&mut self) -> io::Result<u64> {
+    fn read_u64(&mut self) -> Result<u64> {
         if self.align & 7 != 0 {
             let mut buf = &mut [0; 7][..(!self.align + 1) & 7];
             self.read_exact(&mut buf)?;
@@ -139,17 +102,18 @@ where
         })
     }
 
-    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        self.reader.read_exact(buf)?;
-        self.align += buf.len();
-        Ok(())
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        if self.bytes.len() >= buf.len() {
+            buf.copy_from_slice(&self.bytes[..buf.len()]);
+            self.align += buf.len();
+            Ok(())
+        } else {
+            Err(Error::Truncated)
+        }
     }
 }
 
-impl<'a, 'de, R> de::Deserializer<'de> for &'a mut Deserializer<R>
-where
-    R: Read,
-{
+impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
     type Error = Error;
 
     fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
@@ -295,7 +259,7 @@ where
         }
         if let Some(terminator) = buf.pop() {
             if terminator == 0 {
-                let v = std::str::from_utf8(&buf)?;
+                let v = core::str::from_utf8(&buf)?;
                 trace!("{}deserialize str... {:?}", self.indent, v);
                 visitor.visit_str(v)
             } else {
@@ -308,7 +272,7 @@ where
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+    V: Visitor<'de>,
     {
         trace!("{}deserialize string...", self.indent);
         let len = self.read_u32()?;
@@ -318,9 +282,9 @@ where
         }
         if let Some(terminator) = buf.pop() {
             if terminator == 0 {
-                let v = std::str::from_utf8(&buf)?;
+                let v = core::str::from_utf8(&buf)?;
                 trace!("{}deserialize string... {:?}", self.indent, v);
-                visitor.visit_string(v.to_string())
+                return visitor.visit_string(v.to_string());
             } else {
                 Err(Error::StringTerminator(terminator))
             }
@@ -410,12 +374,12 @@ where
     {
         trace!("{}deserialize seq...", self.indent);
         let len = self.read_u32()?;
-        self.push_indent();
+        self.indent.push();
         let v = visitor.visit_seq(SeqAccess {
             de: self,
             size: Some(len as usize),
         });
-        self.pop_indent();
+        self.indent.pop();
         trace!("{}deserialize seq... done", self.indent);
         v
     }
@@ -425,12 +389,12 @@ where
         V: Visitor<'de>,
     {
         trace!("{}deserialize tuple ({} items)...", self.indent, len);
-        self.push_indent();
+        self.indent.push();
         let v = visitor.visit_seq(SeqAccess {
             de: self,
             size: Some(len),
         });
-        self.pop_indent();
+        self.indent.pop();
         trace!("{}deserialize tuple... done", self.indent);
         v
     }
@@ -469,19 +433,13 @@ where
     where
         V: Visitor<'de>,
     {
-        struct SeqAccess<'a, R>
-        where
-            R: Read,
-        {
-            de: &'a mut Deserializer<R>,
+        struct SeqAccess<'a, 'b> {
+            de: &'a mut Deserializer<'b>,
             name: &'static str,
             fields: &'a [&'static str],
         }
 
-        impl<'a, 'de, R> de::SeqAccess<'de> for SeqAccess<'a, R>
-        where
-            R: Read,
-        {
+        impl<'de> de::SeqAccess<'de> for SeqAccess<'_, '_> {
             type Error = Error;
 
             fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
@@ -496,9 +454,9 @@ where
                         self.name,
                         field
                     );
-                    self.de.push_indent();
+                    self.de.indent.push();
                     let v = seed.deserialize(&mut *self.de).map(Some);
-                    self.de.pop_indent();
+                    self.de.indent.pop();
                     trace!(
                         "{}deserialize field {}::{}... done",
                         self.de.indent,
@@ -513,13 +471,13 @@ where
         }
 
         trace!("{}deserialize struct {}...", self.indent, name);
-        self.push_indent();
+        self.indent.push();
         let v = visitor.visit_seq(SeqAccess {
             de: self,
             name,
             fields,
         });
-        self.pop_indent();
+        self.indent.pop();
         trace!("{}deserialize struct {}... done", self.indent, name);
         v
     }
@@ -567,17 +525,11 @@ where
             }
         }
 
-        struct EnumAccess<'a, R>
-        where
-            R: Read,
-        {
-            de: &'a mut Deserializer<R>,
+        struct EnumAccess<'a, 'b> {
+            de: &'a mut Deserializer<'b>,
         }
 
-        impl<'a, 'de, R> de::EnumAccess<'de> for EnumAccess<'a, R>
-        where
-            R: Read,
-        {
+        impl<'de> de::EnumAccess<'de> for EnumAccess<'_, '_> {
             type Error = Error;
             type Variant = VariantAccess;
 
@@ -590,9 +542,9 @@ where
         }
 
         trace!("{}deserialize enum {}...", self.indent, name);
-        self.push_indent();
+        self.indent.push();
         let v = visitor.visit_enum(EnumAccess { de: self });
-        self.pop_indent();
+        self.indent.pop();
         trace!("{}deserialize enum {} done...", self.indent, name);
         v
     }
@@ -602,9 +554,9 @@ where
         V: Visitor<'de>,
     {
         trace!("{}deserialize identifier...", self.indent);
-        self.push_indent();
+        self.indent.push();
         let v = visitor.visit_u32(self.read_u32()?);
-        self.pop_indent();
+        self.indent.pop();
         trace!("{}deserialize identifier done...", self.indent);
         v
     }
@@ -617,18 +569,12 @@ where
     }
 }
 
-struct SeqAccess<'a, R>
-where
-    R: Read,
-{
-    de: &'a mut Deserializer<R>,
+struct SeqAccess<'a, 'b> {
+    de: &'a mut Deserializer<'b>,
     size: Option<usize>,
 }
 
-impl<'a, 'de, R> de::SeqAccess<'de> for SeqAccess<'a, R>
-where
-    R: Read,
-{
+impl<'de> de::SeqAccess<'de> for SeqAccess<'_, '_> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>

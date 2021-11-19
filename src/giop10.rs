@@ -1,9 +1,10 @@
-use crate::cdr::{Deserializer, Result, Serializer};
+use crate::cdr::{self, Deserializer, Serializer};
 use crate::corba::OctetSeq;
 use crate::giop::{Magicn, Version};
 use crate::iop::{ObjectKey, ServiceContextList};
+use alloc::string::String;
+use core::fmt::{self, Formatter};
 use serde::{de, ser, Deserialize, Serialize};
-use std::io::{Read, Write};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MsgType {
@@ -51,11 +52,8 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize<R>(reader: R) -> Result<(Self, Deserializer<R>)>
-    where
-        R: Read,
-    {
-        let mut de = Deserializer::from_reader(reader);
+    pub fn deserialize<'a>(buf: &'a [u8]) -> cdr::Result<(Self, Deserializer<'a>)> {
+        let mut de = Deserializer::from(buf);
         let mut header: Self = Deserialize::deserialize(&mut de)?;
         let de = de.with_le(header.byte_order);
         if header.byte_order {
@@ -64,18 +62,18 @@ impl MessageHeader {
         Ok((header, de))
     }
 
-    pub fn serialize<W>(&self, writer: W) -> Result<Serializer<W>>
+    pub fn serialize<T>(&self) -> cdr::Result<Serializer<T>>
     where
-        W: Write,
+        T: Extend<u8> + Default,
     {
-        let mut serializer = Serializer::new(writer).with_le(self.byte_order);
+        let mut serializer = Serializer::default().with_le(self.byte_order);
         Serialize::serialize(&self, &mut serializer)?;
         Ok(serializer)
     }
 }
 
 impl<'de> Deserialize<'de> for MessageHeader {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,
     {
@@ -84,11 +82,11 @@ impl<'de> Deserialize<'de> for MessageHeader {
         impl<'de> de::Visitor<'de> for Visitor {
             type Value = MessageHeader;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
                 formatter.write_str("a GIOP message header")
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
                 A: de::SeqAccess<'de>,
             {
@@ -133,7 +131,7 @@ impl<'de> Deserialize<'de> for MessageHeader {
 }
 
 impl Serialize for MessageHeader {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {

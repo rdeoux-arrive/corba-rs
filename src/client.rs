@@ -1,4 +1,4 @@
-use crate::cdr::{self, to_writer};
+use crate::cdr;
 use crate::giop::MessageHeader;
 use crate::giop::Version;
 use crate::giop12::{

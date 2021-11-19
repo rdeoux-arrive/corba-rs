@@ -1,7 +1,8 @@
 mod de;
 mod error;
+mod indent;
 mod ser;
 
-pub use de::{from_bytes, from_reader, Deserializer};
+pub use de::{from_bytes, Deserializer};
 pub use error::{Error, Result};
-pub use ser::{to_bytes, to_writer, Serializer};
+pub use ser::{to_bytes, Serializer};

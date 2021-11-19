@@ -1,16 +1,16 @@
-use serde::{de, ser};
-use std::fmt::{self, Display};
-use std::str::Utf8Error;
-use std::{error, io, result};
+use alloc::string::{String, ToString};
+use core::fmt::{self, Display};
+use core::str::Utf8Error;
+use serde::{de, de::StdError, ser};
 
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T> = ::core::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
     // Error constructed via the custom() method
     Message(String),
-    // I/O error
-    Io(io::Error),
+    // No more bytes at the end of the buffer
+    Truncated,
     // Invalid boolean value (should be 0 or 1)
     Bool(u8),
     // Nul string lenght (should be > 0 because of the string terminator)
@@ -37,7 +37,7 @@ impl Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Message(msg) => write!(formatter, "{}", msg),
-            Self::Io(err) => write!(formatter, "{}", err),
+            Self::Truncated => write!(formatter, "Truncated buffer"),
             Self::Bool(_) => write!(formatter, "Invalid boolean value"),
             Self::StringLength => write!(formatter, "Nul string lenght"),
             Self::StringTerminator(_) => write!(formatter, "Invalid string terminator"),
@@ -46,13 +46,7 @@ impl Display for Error {
     }
 }
 
-impl error::Error for Error {}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Self::Io(err)
-    }
-}
+impl StdError for Error {}
 
 impl From<Utf8Error> for Error {
     fn from(err: Utf8Error) -> Self {
