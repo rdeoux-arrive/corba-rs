@@ -52,12 +52,12 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize<'a>(buf: &'a [u8]) -> cdr::Result<(Self, Deserializer<'a>)> {
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
         let mut de = Deserializer::from(buf);
         let mut header: Self = Deserialize::deserialize(&mut de)?;
         let de = de.with_le(header.byte_order);
         if header.byte_order {
-            header.message_size = header.message_size.swap_bytes()
+            header.message_size = header.message_size.swap_bytes();
         }
         Ok((header, de))
     }

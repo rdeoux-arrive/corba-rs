@@ -28,7 +28,7 @@ where
             v.to_le_bytes()
         } else {
             v.to_be_bytes()
-        })
+        });
     }
 
     fn write_u16(&mut self, v: u16) {
@@ -39,7 +39,7 @@ where
             v.to_le_bytes()
         } else {
             v.to_be_bytes()
-        })
+        });
     }
 
     fn write_u32(&mut self, v: u32) {
@@ -50,7 +50,7 @@ where
             v.to_le_bytes()
         } else {
             v.to_be_bytes()
-        })
+        });
     }
 
     fn write_u64(&mut self, v: u64) {
@@ -61,7 +61,7 @@ where
             v.to_le_bytes()
         } else {
             v.to_be_bytes()
-        })
+        });
     }
 
     fn write_all(&mut self, buf: &[u8]) {
@@ -594,7 +594,7 @@ where
     }
 }
 
-pub fn to_bytes<T>(le: bool, value: &T) -> Result<Vec<u8>, Error>
+pub fn to_bytes<T>(le: bool, value: T) -> Result<Vec<u8>, Error>
 where
     T: Serialize,
 {

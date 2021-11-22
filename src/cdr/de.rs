@@ -20,7 +20,8 @@ pub struct Deserializer<'a> {
 }
 
 impl Deserializer<'_> {
-    pub fn with_le(self, le: bool) -> Self {
+    #[must_use]
+    pub const fn with_le(self, le: bool) -> Self {
         Self { le, ..self }
     }
 }
@@ -56,7 +57,7 @@ impl Deserializer<'_> {
             let mut buf = [0];
             self.read_exact(&mut buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf)
+                warn!("found non-zero in padding: {:?}", buf);
             }
         }
         let mut buf = [0, 0];
@@ -73,7 +74,7 @@ impl Deserializer<'_> {
             let mut buf = &mut [0; 3][..(!self.align + 1) & 3];
             self.read_exact(&mut buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf)
+                warn!("found non-zero in padding: {:?}", buf);
             }
         }
         let mut buf = [0; 4];
@@ -90,7 +91,7 @@ impl Deserializer<'_> {
             let mut buf = &mut [0; 7][..(!self.align + 1) & 7];
             self.read_exact(&mut buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf)
+                warn!("found non-zero in padding: {:?}", buf);
             }
         }
         let mut buf = [0; 8];
@@ -284,7 +285,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
             if terminator == 0 {
                 let v = core::str::from_utf8(&buf)?;
                 trace!("{}deserialize string... {:?}", self.indent, v);
-                return visitor.visit_string(v.to_string());
+                visitor.visit_string(v.to_string())
             } else {
                 Err(Error::StringTerminator(terminator))
             }

@@ -5,11 +5,11 @@ pub struct Indent(usize);
 
 impl Indent {
     pub fn push(&mut self) {
-        self.0 += 1
+        self.0 += 1;
     }
 
     pub fn pop(&mut self) {
-        self.0 -= 1
+        self.0 -= 1;
     }
 }
 

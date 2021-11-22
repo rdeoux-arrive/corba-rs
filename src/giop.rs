@@ -92,7 +92,7 @@ pub enum MessageHeader {
 }
 
 impl MessageHeader {
-    pub fn deserialize<'a>(buf: &'a [u8]) -> cdr::Result<(Self, Deserializer<'a>)> {
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
         let mut de = Deserializer::from(buf);
         let magic = Magicn::deserialize(&mut de)?;
         let giop_version = Version::deserialize(&mut de)?;

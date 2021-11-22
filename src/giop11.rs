@@ -66,7 +66,7 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize<'a>(buf: &'a [u8]) -> cdr::Result<(Self, Deserializer<'a>)> {
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
         let mut de = Deserializer::from(buf);
         let (magic, giop_version, flags) = <(Magicn, Version, u8)>::deserialize(&mut de)?;
         let mut de = de.with_le(flags & 1 != 0);
