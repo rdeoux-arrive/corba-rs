@@ -5,19 +5,20 @@ use serde::{de, de::StdError, ser};
 
 pub type Result<T> = ::core::result::Result<T, Error>;
 
-#[derive(Debug)]
+/// Serialization/deserialization error
+#[derive(Clone, Debug, PartialEq)]
 pub enum Error {
-    // Error constructed via the custom() method
+    /// Error constructed via the custom() method
     Message(String),
-    // No more bytes at the end of the buffer
+    /// No more bytes at the end of the buffer
     Truncated,
-    // Invalid boolean value (should be 0 or 1)
+    /// Invalid boolean value (should be 0 or 1)
     Bool(u8),
-    // Nul string lenght (should be > 0 because of the string terminator)
+    /// Nul string length (should be > 0 because of the string terminator)
     StringLength,
-    // Invalid string terminator (should be zero)
+    /// Invalid string terminator (should be zero)
     StringTerminator(u8),
-    // Invalid UTF-8 string
+    /// Invalid UTF-8 string
     Utf8(Utf8Error),
 }
 
