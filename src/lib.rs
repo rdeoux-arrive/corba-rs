@@ -5,7 +5,6 @@
 extern crate alloc;
 
 pub mod cdr;
-#[cfg(feature = "std")]
 pub mod client;
 pub mod corba;
 pub mod giop;

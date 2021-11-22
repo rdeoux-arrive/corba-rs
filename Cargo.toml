@@ -6,7 +6,9 @@ description = "Library to implement GIOP services and clients"
 edition = "2018"
 
 [dependencies]
+embedded-nal = "0.6.0"
 log = "0.4.14"
+nb = "1.0.0"
 serde = { version = "1.0.130", default_features = false, features = ["alloc", "derive"] }
 
 [features]
