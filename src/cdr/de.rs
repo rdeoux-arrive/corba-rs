@@ -272,7 +272,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
     where
-    V: Visitor<'de>,
+        V: Visitor<'de>,
     {
         trace!("{}deserialize string...", self.indent);
         let len = self.read_u32()?;
