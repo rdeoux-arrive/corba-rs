@@ -14,13 +14,13 @@ pub const KEY_ADDR: i16 = 0;
 pub const PROFILE_ADDR: i16 = 1;
 pub const REFERENCE_ADDR: i16 = 2;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct IORAddressingInfo {
     pub selected_profile_index: u32,
     pub ior: IOR,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TargetAddress {
     ObjectKey(ObjectKey),
     Profile(TaggedProfile),

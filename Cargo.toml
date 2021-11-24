@@ -14,3 +14,6 @@ serde = { version = "1.0.130", default_features = false, features = ["alloc", "d
 [features]
 default = []
 std = ["serde/std"]
+
+[dev-dependencies]
+simple_logger = "1.13.0"

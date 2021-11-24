@@ -1,6 +1,7 @@
 use crate::cdr::{self, Deserializer, Serializer};
 use crate::{giop10, giop11, giop12, giop13};
 use alloc::format;
+use core::fmt::{self, Display, Formatter};
 use serde::{de, ser, Deserialize, Serialize};
 
 #[derive(Clone, Debug)]
@@ -45,6 +46,12 @@ impl Version {
             Self::GIOP12 => 2,
             Self::GIOP13 => 3,
         }
+    }
+}
+
+impl Display for Version {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "1.{}", self.minor())
     }
 }
 

@@ -106,6 +106,7 @@ impl Deserializer<'_> {
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         if self.bytes.len() >= buf.len() {
             buf.copy_from_slice(&self.bytes[..buf.len()]);
+            self.bytes = &self.bytes[buf.len()..];
             self.align += buf.len();
             Ok(())
         } else {
