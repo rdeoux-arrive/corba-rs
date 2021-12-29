@@ -5,11 +5,13 @@ use crate::giop12::{
     self, MsgType, ReplyHeader, ReplyStatusType, RequestHeader, SystemExceptionReplyBody,
     TargetAddress,
 };
+use core::fmt::{self, Display, Formatter};
 use embedded_nal::TcpClientStack;
 use log::debug;
 use serde::{Deserialize, Serialize};
 
 /// Sending error
+#[derive(Debug)]
 pub enum SendError<Stack> {
     /// Serialization error
     Cdr(cdr::Error),
@@ -20,6 +22,18 @@ pub enum SendError<Stack> {
 impl<Stack> From<cdr::Error> for SendError<Stack> {
     fn from(err: cdr::Error) -> Self {
         Self::Cdr(err)
+    }
+}
+
+impl<Stack> Display for SendError<Stack>
+where
+    Stack: Display,
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Cdr(err) => write!(f, "serialization failure: {}", err),
+            Self::Stack(err) => write!(f, "network failure: {}", err),
+        }
     }
 }
 
@@ -49,6 +63,22 @@ impl<User, Stack> From<cdr::Error> for RecvError<User, Stack> {
 impl<User, Stack> From<SystemExceptionReplyBody> for RecvError<User, Stack> {
     fn from(err: SystemExceptionReplyBody) -> Self {
         Self::System(err)
+    }
+}
+
+impl<User, Stack> Display for RecvError<User, Stack>
+where
+    User: Display,
+    Stack: Display,
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::Cdr(err) => write!(f, "deserialization failure: {}", err),
+            Self::Message => write!(f, "unexpected message type or version"),
+            Self::System(err) => write!(f, "system exception: {}", err.exception_id),
+            Self::User(err) => write!(f, "user exception: {}", err),
+            Self::Stack(err) => write!(f, "network failure: {}", err),
+        }
     }
 }
 
