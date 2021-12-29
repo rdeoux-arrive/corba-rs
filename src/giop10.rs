@@ -95,7 +95,7 @@ impl<'de> Deserialize<'de> for MessageHeader {
                 let giop_version = seq
                     .next_element::<Version>()?
                     .ok_or_else(|| de::Error::missing_field("GIOP_version"))?;
-                if let Version::GIOP10 = giop_version {
+                if Version::GIOP10 == giop_version {
                     let byte_order = seq
                         .next_element()?
                         .ok_or_else(|| de::Error::missing_field("byte_order"))?;

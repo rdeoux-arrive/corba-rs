@@ -71,8 +71,8 @@ impl Deserializer<'_> {
 
     fn read_u32(&mut self) -> Result<u32> {
         if self.align & 3 != 0 {
-            let mut buf = &mut [0; 3][..(!self.align + 1) & 3];
-            self.read_exact(&mut buf)?;
+            let buf = &mut [0; 3][..(!self.align + 1) & 3];
+            self.read_exact(buf)?;
             if buf[0] != 0 {
                 warn!("found non-zero in padding: {:?}", buf);
             }
@@ -88,8 +88,8 @@ impl Deserializer<'_> {
 
     fn read_u64(&mut self) -> Result<u64> {
         if self.align & 7 != 0 {
-            let mut buf = &mut [0; 7][..(!self.align + 1) & 7];
-            self.read_exact(&mut buf)?;
+            let buf = &mut [0; 7][..(!self.align + 1) & 7];
+            self.read_exact(buf)?;
             if buf[0] != 0 {
                 warn!("found non-zero in padding: {:?}", buf);
             }
@@ -563,6 +563,9 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
         v
     }
 
+    /// # Panics
+    /// 
+    /// This function always panics.
     fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,

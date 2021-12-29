@@ -26,7 +26,7 @@ pub struct Request<'a> {
 
 impl Request<'_> {
     #[must_use]
-    pub fn byte_order(&self) -> bool {
+    pub const fn byte_order(&self) -> bool {
         self.byte_order
     }
 
@@ -108,26 +108,22 @@ impl Request<'_> {
         U: Serialize,
     {
         let message_size = size_of((&header, &body))? as u32;
-        match self.version {
-            Version::GIOP10 => {
-                let message_header = giop10::MessageHeader::new(giop10::MsgType::Reply)
-                    .with_byte_order(self.byte_order)
-                    .with_message_size(message_size);
-                to_bytes(self.byte_order, (message_header, header, body))
-            }
-            _ => {
-                let message_header =
-                    giop11::MessageHeader::new(self.version, giop11::MsgType::Reply)
-                        .with_flags(if self.byte_order { 1 } else { 0 })
-                        .with_message_size(message_size);
-                to_bytes(self.byte_order, (message_header, header, body))
-            }
+        if Version::GIOP10 == self.version {
+            let message_header = giop10::MessageHeader::new(giop10::MsgType::Reply)
+                .with_byte_order(self.byte_order)
+                .with_message_size(message_size);
+            to_bytes(self.byte_order, (message_header, header, body))
+        } else {
+            let message_header = giop11::MessageHeader::new(self.version, giop11::MsgType::Reply)
+                .with_flags(if self.byte_order { 1 } else { 0 })
+                .with_message_size(message_size);
+            to_bytes(self.byte_order, (message_header, header, body))
         }
     }
 }
 
 pub trait Handler {
-    fn handle<'a>(&mut self, request: Request<'a>) -> cdr::Result<Vec<u8>>;
+    fn handle(&mut self, request: Request) -> cdr::Result<Vec<u8>>;
 }
 
 struct Client<S, H>
@@ -205,7 +201,7 @@ where
                 let byte_order = header.flags & 1 != 0;
                 let mut de = de.with_le(byte_order);
                 if header.message_type == giop11::MsgType::Request as u8 {
-                    self.tx = if let Version::GIOP11 = header.giop_version {
+                    self.tx = if Version::GIOP11 == header.giop_version {
                         let request =
                             giop11::RequestHeader::deserialize(&mut de).map_err(Error::Cdr)?;
                         info!(
@@ -299,10 +295,10 @@ where
             if let Err(nb::Error::Other(..)) = client.poll(stack) {
                 error!("client {} is dead", client.addr);
                 if let Err(err) = stack.close(client.socket) {
-                    error!("failed to close socket: {:?}", err)
+                    error!("failed to close socket: {:?}", err);
                 }
             } else {
-                self.clients.push(client)
+                self.clients.push(client);
             }
         }
     }

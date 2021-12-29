@@ -32,7 +32,7 @@ pub struct MessageHeader {
 impl MessageHeader {
     #[must_use]
     pub fn new(giop_version: Version, message_type: MsgType) -> Self {
-        if let Version::GIOP10 = giop_version {
+        if Version::GIOP10 == giop_version {
             panic!("giop_version should not be {}", stringify!(Version::GIOP10))
         }
         Self {
