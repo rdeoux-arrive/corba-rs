@@ -5,54 +5,71 @@ use crate::giop12::{
     self, MsgType, ReplyHeader, ReplyStatusType, RequestHeader, SystemExceptionReplyBody,
     TargetAddress,
 };
-use core::convert::Infallible;
 use embedded_nal::TcpClientStack;
 use log::debug;
 use serde::{Deserialize, Serialize};
 
-/// Client error
+/// Sending error
+pub enum SendError<Stack> {
+    /// Serialization error
+    Cdr(cdr::Error),
+    /// Network related error
+    Stack(Stack),
+}
+
+impl<Stack> From<cdr::Error> for SendError<Stack> {
+    fn from(err: cdr::Error) -> Self {
+        Self::Cdr(err)
+    }
+}
+
+pub type SendResult<Stack> = nb::Result<(), SendError<Stack>>;
+
+/// Receive error
 #[derive(Debug)]
-pub enum Error<T, S> {
-    /// Serialization/deserialization error
+pub enum RecvError<User, Stack> {
+    /// Deserialization error
     Cdr(cdr::Error),
     /// Unexpected message type or version
     Message,
     /// Server-side system exception
     System(SystemExceptionReplyBody),
     /// Server-side user exception
-    User(T),
+    User(User),
     /// Network related error
-    Stack(S),
+    Stack(Stack),
 }
 
-impl<T, S> From<cdr::Error> for Error<T, S> {
+impl<User, Stack> From<cdr::Error> for RecvError<User, Stack> {
     fn from(err: cdr::Error) -> Self {
         Self::Cdr(err)
     }
 }
 
-impl<T, S> From<SystemExceptionReplyBody> for Error<T, S> {
+impl<User, Stack> From<SystemExceptionReplyBody> for RecvError<User, Stack> {
     fn from(err: SystemExceptionReplyBody) -> Self {
         Self::System(err)
     }
 }
 
+pub type RecvResult<T, User, Stack> = nb::Result<T, RecvError<User, Stack>>;
+
 /// CORBA client.
-pub struct Client<T>
+pub struct Client<Stack>
 where
-    T: TcpClientStack,
+    Stack: TcpClientStack,
 {
     request_id: u32,
     byte_order: bool,
-    stream: T::TcpSocket,
+    stream: Stack::TcpSocket,
 }
 
-impl<T> Client<T>
+impl<Stack> Client<Stack>
 where
-    T: TcpClientStack,
+    Stack: TcpClientStack,
 {
     /// Create a new CORBA client.
-    pub fn new(stream: T::TcpSocket) -> Self {
+    pub fn new(stream: Stack::TcpSocket) -> Self {
         Self {
             request_id: 0,
             byte_order: false,
@@ -66,16 +83,16 @@ where
     }
 
     /// Send a request.
-    pub fn send<S>(
+    pub fn send<T>(
         &mut self,
-        stack: &mut T,
+        stack: &mut Stack,
         oneway: bool,
         target: TargetAddress,
         operation: &str,
-        body: S,
-    ) -> nb::Result<(), Error<Infallible, T::Error>>
+        body: T,
+    ) -> SendResult<Stack::Error>
     where
-        S: Serialize,
+        T: Serialize,
     {
         #[derive(Serialize)]
         struct Req<T: Serialize> {
@@ -91,18 +108,19 @@ where
             request: RequestHeader::new(self.request_id, oneway, target, operation),
             body,
         };
-        req.message.message_size = size_of((&req.request, &req.body)).map_err(Error::Cdr)? as u32;
-        let bytes = to_bytes(self.byte_order, &req).map_err(Error::Cdr)?;
+        req.message.message_size =
+            size_of((&req.request, &req.body)).map_err(SendError::Cdr)? as u32;
+        let bytes = to_bytes(self.byte_order, &req).map_err(SendError::Cdr)?;
         debug!("send {} bytes", bytes.len());
         stack
             .send(&mut self.stream, &bytes)
-            .map_err(|err| err.map(Error::Stack))?;
+            .map_err(|err| err.map(SendError::Stack))?;
         self.request_id += 1;
         Ok(())
     }
 
     /// Try to receive a reply.
-    pub fn recv<'de, O, E>(&mut self, stack: &mut T) -> nb::Result<O, Error<E, T::Error>>
+    pub fn recv<'de, O, E>(&mut self, stack: &mut Stack) -> RecvResult<O, E, Stack::Error>
     where
         O: Deserialize<'de>,
         E: Deserialize<'de>,
@@ -110,33 +128,34 @@ where
         let mut buffer = [0; 1500];
         let size = stack
             .receive(&mut self.stream, &mut buffer)
-            .map_err(|err| err.map(Error::Stack))?;
-        let (header, mut de) = MessageHeader::deserialize(&buffer[..size]).map_err(Error::Cdr)?;
+            .map_err(|err| err.map(RecvError::Stack))?;
+        let (header, mut de) =
+            MessageHeader::deserialize(&buffer[..size]).map_err(RecvError::Cdr)?;
         match header {
             MessageHeader::V1_2(header) => {
                 if header.message_type == MsgType::Reply as u8 {
-                    let reply = ReplyHeader::deserialize(&mut de).map_err(Error::Cdr)?;
+                    let reply = ReplyHeader::deserialize(&mut de).map_err(RecvError::Cdr)?;
                     match reply.reply_status {
                         ReplyStatusType::NoException => {
-                            let body = <_>::deserialize(&mut de).map_err(Error::Cdr)?;
+                            let body = <_>::deserialize(&mut de).map_err(RecvError::Cdr)?;
                             Ok(body)
                         }
                         ReplyStatusType::SystemException => {
                             let err = SystemExceptionReplyBody::deserialize(&mut de)
-                                .map_err(Error::Cdr)?;
-                            Err(Error::System(err).into())
+                                .map_err(RecvError::Cdr)?;
+                            Err(RecvError::System(err).into())
                         }
                         ReplyStatusType::UserException => {
-                            let err = E::deserialize(&mut de).map_err(Error::Cdr)?;
-                            Err(Error::User(err).into())
+                            let err = E::deserialize(&mut de).map_err(RecvError::Cdr)?;
+                            Err(RecvError::User(err).into())
                         }
                         _ => unimplemented!(),
                     }
                 } else {
-                    Err(Error::Message.into())
+                    Err(RecvError::Message.into())
                 }
             }
-            _ => Err(Error::Message.into()),
+            _ => Err(RecvError::Message.into()),
         }
     }
 }

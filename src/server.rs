@@ -10,11 +10,12 @@ use embedded_nal::{SocketAddr, TcpClientStack, TcpFullStack};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 
-pub enum Error<E> {
+enum Error<E> {
     Cdr(cdr::Error),
     TcpStack(E),
 }
 
+/// GIOP request
 pub struct Request<'a> {
     pub target: TargetAddress,
     pub operation: String,
@@ -25,11 +26,13 @@ pub struct Request<'a> {
 }
 
 impl Request<'_> {
+    /// Byte order of the request
     #[must_use]
     pub const fn byte_order(&self) -> bool {
         self.byte_order
     }
 
+    /// Successfully reply to a request
     pub fn reply_ok<T>(self, body: T) -> cdr::Result<Vec<u8>>
     where
         T: Serialize,
@@ -55,6 +58,7 @@ impl Request<'_> {
         }
     }
 
+    /// Reply with a system failure
     pub fn reply_system_exception(self, err: SystemExceptionReplyBody) -> cdr::Result<Vec<u8>> {
         warn!("send system exception to request #{}", self.request_id);
         match self.version {
@@ -77,6 +81,7 @@ impl Request<'_> {
         }
     }
 
+    /// Reply with a user exception
     pub fn reply_user_exception<T>(self, exception_id: &str, err: T) -> cdr::Result<Vec<u8>>
     where
         T: Serialize,
@@ -102,7 +107,7 @@ impl Request<'_> {
         }
     }
 
-    pub fn reply<T, U>(self, header: T, body: U) -> cdr::Result<Vec<u8>>
+    fn reply<T, U>(self, header: T, body: U) -> cdr::Result<Vec<u8>>
     where
         T: Serialize,
         U: Serialize,
@@ -122,7 +127,9 @@ impl Request<'_> {
     }
 }
 
+/// CORBA request handler
 pub trait Handler {
+    /// Handle a request
     fn handle(&mut self, request: Request) -> cdr::Result<Vec<u8>>;
 }
 
@@ -247,6 +254,7 @@ where
     }
 }
 
+/// GIOP server
 pub struct Server<S, F, H>
 where
     S: TcpFullStack,
@@ -264,6 +272,7 @@ where
     F: Fn(SocketAddr) -> H,
     H: Handler,
 {
+    /// Start listening
     pub fn listen(stack: &mut S, local_port: u16, factory: F) -> Result<Self, S::Error> {
         let mut listener = stack.socket()?;
         stack.bind(&mut listener, local_port)?;
@@ -276,6 +285,7 @@ where
         })
     }
 
+    /// Process pending requests
     pub fn poll(&mut self, stack: &mut S) {
         match stack.accept(&mut self.listener) {
             Ok((socket, addr)) => {
