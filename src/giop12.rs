@@ -2,7 +2,7 @@ use crate::iop::{ObjectKey, ServiceContextList, TaggedProfile, IOR};
 use alloc::borrow::ToOwned;
 use alloc::format;
 use alloc::string::String;
-use core::fmt::{self, Formatter};
+use core::fmt::{self, Debug, Formatter};
 use serde::de::{Error, SeqAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -20,11 +20,24 @@ pub struct IORAddressingInfo {
     pub ior: IOR,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum TargetAddress {
     ObjectKey(ObjectKey),
     Profile(TaggedProfile),
     Ior(IORAddressingInfo),
+}
+
+impl Debug for TargetAddress {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::ObjectKey(key) => match core::str::from_utf8(key) {
+                Ok(key) if key.is_ascii() => f.debug_tuple("ObjectKey").field(&key).finish(),
+                _ => f.debug_tuple("ObjectKey").field(&key).finish(),
+            },
+            Self::Profile(profile) => f.debug_tuple("Profile").field(&profile).finish(),
+            Self::Ior(ior) => f.debug_tuple("Ior").field(&ior).finish(),
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for TargetAddress {
