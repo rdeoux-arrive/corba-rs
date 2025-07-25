@@ -1,19 +1,18 @@
 [package]
 name = "corba"
-version = "0.2.0"
-authors = ["Romain Déoux <romain.deoux@flowbird.group>"]
+version = "0.2.1"
 description = "Library to implement GIOP services and clients"
 edition = "2021"
 
 [dependencies]
-embedded-nal = "0.8.0"
-log = "0.4.20"
+embedded-nal = "0.9.0"
+log = "0.4.27"
 nb = "1.1.0"
-serde = { version = "1.0.195", default-features = false, features = ["alloc", "derive"] }
+serde = { version = "1.0.219", default-features = false, features = ["alloc", "derive"] }
 
 [features]
 default = ["std"]
 std = ["serde/std"]
 
 [dev-dependencies]
-simple_logger = { version = "4.3.3", default-features = false, features = ["colors"] }
+simple_logger = { version = "5.0.0", default-features = false, features = ["colors"] }

@@ -1,10 +1,18 @@
+use core::net::SocketAddr;
+
 use alloc::collections::VecDeque;
-use embedded_nal::{SocketAddr, TcpClientStack, TcpFullStack};
+use embedded_nal::{TcpClientStack, TcpError, TcpErrorKind, TcpFullStack};
 
 pub type Socket = usize;
 
 #[derive(Debug)]
 pub struct Error;
+
+impl TcpError for Error {
+    fn kind(&self) -> TcpErrorKind {
+        TcpErrorKind::Other
+    }
+}
 
 #[derive(Debug)]
 pub enum Expect<'a> {
@@ -138,10 +146,6 @@ impl TcpClientStack for Stack<'_> {
     ) -> nb::Result<(), Self::Error> {
         let expect = self.pop("connect");
         panic!("expected {:?} but got a call to connect()", expect);
-    }
-
-    fn is_connected(&mut self, _: &Self::TcpSocket) -> Result<bool, Self::Error> {
-        todo!()
     }
 
     fn send(&mut self, socket: &mut Self::TcpSocket, buf: &[u8]) -> nb::Result<usize, Self::Error> {

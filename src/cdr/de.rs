@@ -564,7 +564,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
     }
 
     /// # Panics
-    /// 
+    ///
     /// This function always panics.
     fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value>
     where

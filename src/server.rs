@@ -1,15 +1,21 @@
-use crate::cdr::{self, size_of, to_bytes, Deserializer};
-use crate::giop::{MessageHeader, Version};
-use crate::giop10::{self, SystemExceptionReplyBody};
-use crate::giop11;
-use crate::giop12::{self, TargetAddress};
-use crate::iop;
+use core::net::SocketAddr;
+
 use alloc::string::String;
-use alloc::vec::Vec;
-use embedded_nal::{SocketAddr, TcpClientStack, TcpFullStack};
+
+use embedded_nal::{TcpClientStack, TcpFullStack};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    cdr::{self, size_of, to_bytes, Deserializer},
+    giop::{MessageHeader, Version},
+    giop10::{self, SystemExceptionReplyBody},
+    giop11,
+    giop12::{self, TargetAddress},
+    iop,
+};
+
+#[derive(Debug)]
 enum Error<E> {
     Cdr(cdr::Error),
     TcpStack(E),
@@ -302,13 +308,14 @@ where
         }
 
         for mut client in core::mem::take(&mut self.clients) {
-            if let Err(nb::Error::Other(..)) = client.poll(stack) {
-                error!("client {} is dead", client.addr);
-                if let Err(err) = stack.close(client.socket) {
-                    error!("failed to close socket: {:?}", err);
+            match client.poll(stack) {
+                Err(nb::Error::Other(..)) => {
+                    error!("client {} is dead", client.addr);
+                    if let Err(err) = stack.close(client.socket) {
+                        error!("failed to close socket: {:?}", err);
+                    }
                 }
-            } else {
-                self.clients.push(client);
+                _ => self.clients.push(client),
             }
         }
     }
@@ -316,18 +323,22 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{Handler, Request, Server};
-    use crate::cdr::{self, size_of, to_bytes};
-    use crate::corba::{BadOperation, BadParam, CompletionStatus};
-    use crate::giop::Version;
-    use crate::giop13::{
-        MessageHeader, MsgType, ReplyHeader, ReplyStatusType, RequestHeader,
-        SystemExceptionReplyBody, TargetAddress,
-    };
-    use crate::mock_nal::Stack;
     use alloc::vec::Vec;
-    use embedded_nal::SocketAddr;
+    use core::net::SocketAddr;
+
     use simple_logger::SimpleLogger;
+
+    use crate::{
+        cdr::{self, size_of, to_bytes},
+        corba::{BadOperation, BadParam, CompletionStatus},
+        giop::Version,
+        giop13::{
+            MessageHeader, MsgType, ReplyHeader, ReplyStatusType, RequestHeader,
+            SystemExceptionReplyBody, TargetAddress,
+        },
+        mock_nal::Stack,
+        server::{Handler, Request, Server},
+    };
 
     struct Test;
 
