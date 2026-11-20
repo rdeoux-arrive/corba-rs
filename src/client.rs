@@ -114,6 +114,11 @@ where
     }
 
     /// Send a request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request cannot be serialized or if the network
+    /// stack fails to send it.
     pub fn send<T>(
         &mut self,
         stack: &mut Stack,
@@ -139,8 +144,7 @@ where
             request: RequestHeader::new(self.request_id, oneway, target, operation),
             body,
         };
-        req.message.message_size =
-            size_of((&req.request, &req.body)).map_err(SendError::Cdr)? as u32;
+        req.message.message_size = size_of((&req.request, &req.body)).map_err(SendError::Cdr)?;
         let bytes = to_bytes(self.byte_order, &req).map_err(SendError::Cdr)?;
         debug!("send {} bytes", bytes.len());
         stack
@@ -151,6 +155,11 @@ where
     }
 
     /// Try to receive a reply.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no reply is available yet, if the network stack
+    /// fails to receive it or if the reply cannot be deserialized.
     pub fn recv<'de, O, E>(&mut self, stack: &mut Stack) -> RecvResult<O, E, Stack::Error>
     where
         O: Deserialize<'de>,

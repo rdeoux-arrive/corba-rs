@@ -52,6 +52,11 @@ impl MessageHeader {
         }
     }
 
+    /// Deserialize a message header and return the body deserializer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer does not hold a valid header.
     pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer<'_>)> {
         let mut de = Deserializer::from(buf);
         let mut header: Self = Deserialize::deserialize(&mut de)?;
@@ -62,6 +67,11 @@ impl MessageHeader {
         Ok((header, de))
     }
 
+    /// Serialize the message header and return the serializer for the body.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the header cannot be serialized.
     pub fn serialize<T>(&self) -> cdr::Result<Serializer<T>>
     where
         T: Extend<u8> + Default,

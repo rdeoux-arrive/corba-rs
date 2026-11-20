@@ -165,7 +165,7 @@ where
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
         trace!("{}serialize str {:?}", self.indent, v);
-        self.write_u32(v.len() as u32 + 1);
+        self.write_u32(u32::try_from(v.len() + 1)?);
         self.write_all(v.as_bytes());
         self.write_u8(0);
         Ok(&self.stream)
@@ -178,7 +178,7 @@ where
             v.len(),
             if v.len() < 2 { "s" } else { "" }
         );
-        self.write_u32(v.len() as u32);
+        self.write_u32(u32::try_from(v.len())?);
         self.write_all(v);
         Ok(&self.stream)
     }
@@ -259,7 +259,7 @@ where
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         trace!("{}serialize seq...", self.indent);
         if let Some(len) = len {
-            self.write_u32(len as u32);
+            self.write_u32(u32::try_from(len)?);
         }
         self.indent.push();
         Ok(SerializeSeq { ser: self })
@@ -306,7 +306,7 @@ where
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         trace!("{}serialize map...", self.indent);
         if let Some(len) = len {
-            self.write_u32(len as u32);
+            self.write_u32(u32::try_from(len)?);
         }
         self.indent.push();
         Ok(self)
@@ -587,6 +587,11 @@ where
     }
 }
 
+/// Serialize a value to CDR bytes.
+///
+/// # Errors
+///
+/// Returns an error if the value cannot be serialized.
 pub fn to_bytes<T>(le: bool, value: T) -> Result<Vec<u8>, Error>
 where
     T: Serialize,
@@ -595,7 +600,13 @@ where
     value.serialize(&mut serializer).cloned()
 }
 
-pub fn size_of<T>(value: T) -> Result<usize, Error>
+/// Compute the CDR serialized size of a value.
+///
+/// # Errors
+///
+/// Returns an error if the value cannot be serialized or if its size does not
+/// fit in 32 bits.
+pub fn size_of<T>(value: T) -> Result<u32, Error>
 where
     T: Serialize,
 {
@@ -612,13 +623,28 @@ where
     }
 
     let mut ser = Serializer::<SizeOf>::default();
-    value.serialize(&mut ser).map(|ser| ser.0)
+    let size = value.serialize(&mut ser)?.0;
+    Ok(u32::try_from(size)?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::vec;
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn length_too_large() {
+        struct Seq(usize);
+
+        impl Serialize for Seq {
+            fn serialize<S: ser::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                ser::SerializeSeq::end(s.serialize_seq(Some(self.0))?)
+            }
+        }
+
+        assert_eq!(to_bytes(false, Seq(usize::MAX)), Err(Error::TooLarge));
+    }
 
     #[test]
     fn serialize_primitive() {

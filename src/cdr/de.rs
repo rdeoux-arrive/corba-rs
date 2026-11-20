@@ -37,6 +37,11 @@ impl<'a> From<&'a [u8]> for Deserializer<'a> {
     }
 }
 
+/// Deserialize a value from CDR bytes.
+///
+/// # Errors
+///
+/// Returns an error if the buffer is truncated or does not hold a valid value.
 pub fn from_bytes<'de, T>(buf: &[u8]) -> Result<T>
 where
     T: Deserialize<'de>,

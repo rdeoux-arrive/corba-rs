@@ -1,6 +1,6 @@
 use alloc::string::{String, ToString};
 use core::fmt::{self, Display};
-use core::str::Utf8Error;
+use core::{num::TryFromIntError, str::Utf8Error};
 use serde::{de, de::StdError, ser};
 
 pub type Result<T> = ::core::result::Result<T, Error>;
@@ -20,6 +20,8 @@ pub enum Error {
     StringTerminator(u8),
     /// Invalid UTF-8 string
     Utf8(Utf8Error),
+    /// Length or size that does not fit in 32 bits
+    TooLarge,
 }
 
 impl ser::Error for Error {
@@ -43,11 +45,18 @@ impl Display for Error {
             Self::StringLength => write!(formatter, "Nul string lenght"),
             Self::StringTerminator(_) => write!(formatter, "Invalid string terminator"),
             Self::Utf8(err) => write!(formatter, "{err}"),
+            Self::TooLarge => write!(formatter, "Length does not fit in 32 bits"),
         }
     }
 }
 
 impl StdError for Error {}
+
+impl From<TryFromIntError> for Error {
+    fn from(_: TryFromIntError) -> Self {
+        Self::TooLarge
+    }
+}
 
 impl From<Utf8Error> for Error {
     fn from(err: Utf8Error) -> Self {
