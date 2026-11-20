@@ -25,7 +25,7 @@ enum Error<E> {
 }
 
 impl<E: Debug> Display for Error<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Cdr(err) => write!(f, "CDR error: {err}"),
             Self::TcpStack(err) => write!(f, "TCP stack error: {err:?}"),
@@ -423,7 +423,7 @@ mod tests {
     }
 
     impl Handler for Test {
-        fn handle(&mut self, request: Request<'_>) -> cdr::Result<Vec<u8>> {
+        fn handle(&mut self, request: Request) -> cdr::Result<Vec<u8>> {
             match &request.target {
                 TargetAddress::ObjectKey(object_key) if object_key == b"TEST" => {
                     match request.operation.as_str() {

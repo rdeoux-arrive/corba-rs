@@ -92,7 +92,7 @@ impl<'de> Deserialize<'de> for MessageHeader {
         impl<'de> de::Visitor<'de> for Visitor {
             type Value = MessageHeader;
 
-            fn expecting(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
                 formatter.write_str("a GIOP message header")
             }
 
