@@ -165,7 +165,11 @@ where
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
         trace!("{}serialize str {:?}", self.indent, v);
-        self.write_u32(u32::try_from(v.len() + 1)?);
+        self.write_u32(
+            u32::try_from(v.len())?
+                .checked_add(1)
+                .ok_or(Error::TooLarge)?,
+        );
         self.write_all(v.as_bytes());
         self.write_u8(0);
         Ok(&self.stream)

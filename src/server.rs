@@ -469,11 +469,11 @@ mod tests {
                 .accept(0, Err(nb::Error::Other(crate::mock_nal::Error)))
                 .receive(1, 1500, Err(nb::Error::WouldBlock)),
         );
-        server.poll(
-            stack
-                .accept(0, Err(nb::Error::WouldBlock))
-                .receive(1, 1500, Err(nb::Error::WouldBlock)),
-        );
+        server.poll(stack.accept(0, Err(nb::Error::WouldBlock)).receive(
+            1,
+            1500,
+            Err(nb::Error::WouldBlock),
+        ));
     }
 
     #[test]
