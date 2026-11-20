@@ -632,6 +632,7 @@ mod tests {
         }
 
         assert_eq!(to_bytes(false, Seq(usize::MAX)), Err(Error::TooLarge));
+        assert_eq!(size_of(Seq(usize::MAX)), Err(Error::TooLarge));
     }
 
     #[test]

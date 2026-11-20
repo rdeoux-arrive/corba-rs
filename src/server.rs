@@ -3,7 +3,7 @@ use core::{
     net::SocketAddr,
 };
 
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 
 use embedded_nal::{TcpClientStack, TcpFullStack};
 use log::{debug, error, info, warn};
@@ -446,6 +446,34 @@ mod tests {
                 ),
             }
         }
+    }
+
+    #[test]
+    fn accept_failure_keeps_clients() {
+        let mut stack = Stack::new();
+        let mut server = Server::listen(
+            stack.socket(Ok(0)).bind(0, 639, Ok(())).listen(0, Ok(())),
+            639,
+            Test::factory,
+        )
+        .unwrap();
+        server.poll(
+            stack
+                .accept(0, Ok((1, SocketAddr::from(([127, 0, 0, 1], 1234)))))
+                .receive(1, 1500, Err(nb::Error::WouldBlock)),
+        );
+
+        // a failing accept must neither panic nor drop the existing client
+        server.poll(
+            stack
+                .accept(0, Err(nb::Error::Other(crate::mock_nal::Error)))
+                .receive(1, 1500, Err(nb::Error::WouldBlock)),
+        );
+        server.poll(
+            stack
+                .accept(0, Err(nb::Error::WouldBlock))
+                .receive(1, 1500, Err(nb::Error::WouldBlock)),
+        );
     }
 
     #[test]
