@@ -6,13 +6,13 @@ edition = "2021"
 
 [dependencies]
 embedded-nal = "0.9.0"
-log = "0.4.27"
+log = "0.4.35"
 nb = "1.1.0"
-serde = { version = "1.0.219", default-features = false, features = ["alloc", "derive"] }
+serde = { version = "1.0.229", default-features = false, features = ["alloc", "derive"] }
 
 [features]
 default = ["std"]
 std = ["serde/std"]
 
 [dev-dependencies]
-simple_logger = { version = "5.0.0", default-features = false, features = ["colors"] }
+simple_logger = { version = "5.2.0", default-features = false, features = ["colors"] }
