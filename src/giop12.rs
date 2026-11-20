@@ -20,7 +20,7 @@ pub struct IORAddressingInfo {
     pub ior: IOR,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum TargetAddress {
     ObjectKey(ObjectKey),
     Profile(TaggedProfile),
