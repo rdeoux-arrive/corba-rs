@@ -2,7 +2,7 @@ use crate::cdr::{self, Deserializer, Serializer};
 use crate::{giop10, giop11, giop12, giop13};
 use alloc::format;
 use core::fmt::{self, Display, Formatter};
-use serde::{de, ser, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de, ser};
 
 #[derive(Clone, Debug)]
 pub struct Magicn;
@@ -29,7 +29,7 @@ impl Serialize for Magicn {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Version {
     GIOP10,
     GIOP11,
@@ -68,9 +68,8 @@ impl<'de> Deserialize<'de> for Version {
             (1, 3) => Self::GIOP13,
             (major, minor) => {
                 return Err(de::Error::custom(format!(
-                    "Unsupported GIOP version: {}.{}",
-                    major, minor
-                )))
+                    "Unsupported GIOP version: {major}.{minor}"
+                )));
             }
         };
         Ok(v)
@@ -99,7 +98,12 @@ pub enum MessageHeader {
 }
 
 impl MessageHeader {
-    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
+    /// Deserialize a message header and return the body deserializer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer does not hold a valid header.
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer<'_>)> {
         let mut de = Deserializer::from(buf);
         let magic = Magicn::deserialize(&mut de)?;
         let giop_version = Version::deserialize(&mut de)?;
@@ -143,6 +147,11 @@ impl MessageHeader {
         }
     }
 
+    /// Serialize the message header and return the serializer for the body.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the header cannot be serialized.
     pub fn serialize<T>(self) -> cdr::Result<Serializer<T>>
     where
         T: Extend<u8> + Default,

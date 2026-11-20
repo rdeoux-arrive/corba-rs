@@ -1,13 +1,13 @@
 use alloc::vec::Vec;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompletionStatus {
     CompletedYes,
     CompletedNo,
     CompletedMaybe,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExceptionType {
     NoException,
     UserException,

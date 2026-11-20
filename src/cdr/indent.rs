@@ -4,11 +4,11 @@ use core::fmt::{Display, Formatter, Result};
 pub struct Indent(usize);
 
 impl Indent {
-    pub fn push(&mut self) {
+    pub const fn push(&mut self) {
         self.0 += 1;
     }
 
-    pub fn pop(&mut self) {
+    pub const fn pop(&mut self) {
         self.0 -= 1;
     }
 }

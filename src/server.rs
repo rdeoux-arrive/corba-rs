@@ -1,13 +1,16 @@
-use core::net::SocketAddr;
+use core::{
+    fmt::{self, Debug, Display},
+    net::SocketAddr,
+};
 
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 
 use embedded_nal::{TcpClientStack, TcpFullStack};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cdr::{self, size_of, to_bytes, Deserializer},
+    cdr::{self, Deserializer, size_of, to_bytes},
     giop::{MessageHeader, Version},
     giop10::{self, SystemExceptionReplyBody},
     giop11,
@@ -21,7 +24,18 @@ enum Error<E> {
     TcpStack(E),
 }
 
+impl<E: Debug> Display for Error<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Cdr(err) => write!(f, "CDR error: {err}"),
+            Self::TcpStack(err) => write!(f, "TCP stack error: {err:?}"),
+        }
+    }
+}
+
 /// GIOP request
+// `request_id` is the GIOP name of this field
+#[allow(clippy::struct_field_names)]
 pub struct Request<'a> {
     pub target: TargetAddress,
     pub operation: String,
@@ -39,6 +53,10 @@ impl Request<'_> {
     }
 
     /// Successfully reply to a request
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the reply cannot be serialized.
     pub fn reply_ok<T>(self, body: T) -> cdr::Result<Vec<u8>>
     where
         T: Serialize,
@@ -65,6 +83,10 @@ impl Request<'_> {
     }
 
     /// Reply with a system failure
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the reply cannot be serialized.
     pub fn reply_system_exception(self, err: SystemExceptionReplyBody) -> cdr::Result<Vec<u8>> {
         warn!("send system exception to request #{}", self.request_id);
         match self.version {
@@ -88,6 +110,10 @@ impl Request<'_> {
     }
 
     /// Reply with a user exception
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the reply cannot be serialized.
     pub fn reply_user_exception<T>(self, exception_id: &str, err: T) -> cdr::Result<Vec<u8>>
     where
         T: Serialize,
@@ -118,7 +144,7 @@ impl Request<'_> {
         T: Serialize,
         U: Serialize,
     {
-        let message_size = size_of((&header, &body))? as u32;
+        let message_size = size_of((&header, &body))?;
         if Version::GIOP10 == self.version {
             let message_header = giop10::MessageHeader::new(giop10::MsgType::Reply)
                 .with_byte_order(self.byte_order)
@@ -126,7 +152,7 @@ impl Request<'_> {
             to_bytes(self.byte_order, (message_header, header, body))
         } else {
             let message_header = giop11::MessageHeader::new(self.version, giop11::MsgType::Reply)
-                .with_flags(if self.byte_order { 1 } else { 0 })
+                .with_flags(u8::from(self.byte_order))
                 .with_message_size(message_size);
             to_bytes(self.byte_order, (message_header, header, body))
         }
@@ -136,6 +162,10 @@ impl Request<'_> {
 /// CORBA request handler
 pub trait Handler {
     /// Handle a request
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the reply cannot be serialized.
     fn handle(&mut self, request: Request) -> cdr::Result<Vec<u8>>;
 }
 
@@ -149,7 +179,7 @@ where
     tx: Vec<u8>,
 }
 
-impl<'a, S, H> Client<S, H>
+impl<S, H> Client<S, H>
 where
     S: TcpClientStack,
     H: Handler,
@@ -279,11 +309,16 @@ where
     H: Handler,
 {
     /// Start listening
+    ///
+    /// # Errors
+    ///
+    /// Returns the network stack error if the socket cannot be created, bound
+    /// or put in listening mode.
     pub fn listen(stack: &mut S, local_port: u16, factory: F) -> Result<Self, S::Error> {
         let mut listener = stack.socket()?;
         stack.bind(&mut listener, local_port)?;
         stack.listen(&mut listener)?;
-        info!("server listening on port {}", local_port);
+        info!("server listening on port {local_port}");
         Ok(Self {
             listener,
             factory,
@@ -295,7 +330,7 @@ where
     pub fn poll(&mut self, stack: &mut S) {
         match stack.accept(&mut self.listener) {
             Ok((socket, addr)) => {
-                info!("new client: {}", addr);
+                info!("new client: {addr}");
                 self.clients.push(Client {
                     socket,
                     addr,
@@ -303,16 +338,16 @@ where
                     tx: Vec::new(),
                 });
             }
-            Err(nb::Error::Other(..)) => panic!(),
+            Err(nb::Error::Other(err)) => error!("failed to accept a client: {err:?}"),
             Err(nb::Error::WouldBlock) => {}
         }
 
         for mut client in core::mem::take(&mut self.clients) {
             match client.poll(stack) {
-                Err(nb::Error::Other(..)) => {
-                    error!("client {} is dead", client.addr);
+                Err(nb::Error::Other(err)) => {
+                    error!("client {} is dead: {err}", client.addr);
                     if let Err(err) = stack.close(client.socket) {
-                        error!("failed to close socket: {:?}", err);
+                        error!("failed to close socket: {err:?}");
                     }
                 }
                 _ => self.clients.push(client),
@@ -355,7 +390,7 @@ mod tests {
                 operation,
             );
             let message_header = MessageHeader::new(Version::GIOP13, MsgType::Request)
-                .with_message_size(size_of(&request_header).unwrap() as u32);
+                .with_message_size(size_of(&request_header).unwrap());
             to_bytes(false, (message_header, request_header)).unwrap()
         }
 
@@ -377,8 +412,10 @@ mod tests {
                 reply_status,
                 service_context: Vec::new(),
             };
-            let message_header = MessageHeader::new(Version::GIOP13, MsgType::Reply)
-                .with_message_size((size_of(&reply_header).unwrap() + reply_body.len()) as u32);
+            let message_size =
+                size_of(&reply_header).unwrap() + u32::try_from(reply_body.len()).unwrap();
+            let message_header =
+                MessageHeader::new(Version::GIOP13, MsgType::Reply).with_message_size(message_size);
             let mut buf = to_bytes(false, (message_header, reply_header)).unwrap();
             buf.extend(reply_body);
             buf
@@ -386,7 +423,7 @@ mod tests {
     }
 
     impl Handler for Test {
-        fn handle<'a>(&mut self, request: Request<'a>) -> cdr::Result<Vec<u8>> {
+        fn handle(&mut self, request: Request) -> cdr::Result<Vec<u8>> {
             match &request.target {
                 TargetAddress::ObjectKey(object_key) if object_key == b"TEST" => {
                     match request.operation.as_str() {
@@ -412,6 +449,35 @@ mod tests {
     }
 
     #[test]
+    fn accept_failure_keeps_clients() {
+        let mut stack = Stack::new();
+        let mut server = Server::listen(
+            stack.socket(Ok(0)).bind(0, 639, Ok(())).listen(0, Ok(())),
+            639,
+            Test::factory,
+        )
+        .unwrap();
+        server.poll(
+            stack
+                .accept(0, Ok((1, SocketAddr::from(([127, 0, 0, 1], 1234)))))
+                .receive(1, 1500, Err(nb::Error::WouldBlock)),
+        );
+
+        // a failing accept must neither panic nor drop the existing client
+        server.poll(
+            stack
+                .accept(0, Err(nb::Error::Other(crate::mock_nal::Error)))
+                .receive(1, 1500, Err(nb::Error::WouldBlock)),
+        );
+        server.poll(stack.accept(0, Err(nb::Error::WouldBlock)).receive(
+            1,
+            1500,
+            Err(nb::Error::WouldBlock),
+        ));
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // one linear scenario, splitting would hide it
     fn server() {
         SimpleLogger::new().init().ok();
 

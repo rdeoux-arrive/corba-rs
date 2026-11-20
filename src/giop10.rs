@@ -4,9 +4,9 @@ use crate::giop::{Magicn, Version};
 use crate::iop::{ObjectKey, ServiceContextList};
 use alloc::string::String;
 use core::fmt::{self, Formatter};
-use serde::{de, ser, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de, ser};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MsgType {
     Request,
     Reply,
@@ -52,7 +52,12 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
+    /// Deserialize a message header and return the body deserializer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer does not hold a valid header.
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer<'_>)> {
         let mut de = Deserializer::from(buf);
         let mut header: Self = Deserialize::deserialize(&mut de)?;
         let de = de.with_le(header.byte_order);
@@ -62,6 +67,11 @@ impl MessageHeader {
         Ok((header, de))
     }
 
+    /// Serialize the message header and return the serializer for the body.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the header cannot be serialized.
     pub fn serialize<T>(&self) -> cdr::Result<Serializer<T>>
     where
         T: Extend<u8> + Default,
@@ -82,7 +92,7 @@ impl<'de> Deserialize<'de> for MessageHeader {
         impl<'de> de::Visitor<'de> for Visitor {
             type Value = MessageHeader;
 
-            fn expecting(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
                 formatter.write_str("a GIOP message header")
             }
 
@@ -156,7 +166,7 @@ pub struct RequestHeader {
     pub requesting_principal: OctetSeq,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum ReplyStatusType {
     NoException,
     UserException,

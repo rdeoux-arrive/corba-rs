@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::giop10::{ReplyHeader, SystemExceptionReplyBody};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MsgType {
     Request,
     Reply,
@@ -30,11 +30,18 @@ pub struct MessageHeader {
 }
 
 impl MessageHeader {
+    /// Create a message header.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `giop_version` is GIOP 1.0.
     #[must_use]
     pub fn new(giop_version: Version, message_type: MsgType) -> Self {
-        if Version::GIOP10 == giop_version {
-            panic!("giop_version should not be {}", stringify!(Version::GIOP10))
-        }
+        assert!(
+            Version::GIOP10 != giop_version,
+            "giop_version should not be {}",
+            stringify!(Version::GIOP10)
+        );
         Self {
             magic: Magicn,
             giop_version,
@@ -66,7 +73,12 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
+    /// Deserialize a message header and return the body deserializer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer does not hold a valid header.
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer<'_>)> {
         let mut de = Deserializer::from(buf);
         let (magic, giop_version, flags) = <(Magicn, Version, u8)>::deserialize(&mut de)?;
         let mut de = de.with_le(flags & 1 != 0);
@@ -83,6 +95,11 @@ impl MessageHeader {
         ))
     }
 
+    /// Serialize the message header and return the serializer for the body.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the header cannot be serialized.
     pub fn serialize<T>(&self) -> cdr::Result<Serializer<T>>
     where
         T: Extend<u8> + Default,

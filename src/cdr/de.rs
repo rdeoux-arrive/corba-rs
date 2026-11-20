@@ -37,6 +37,11 @@ impl<'a> From<&'a [u8]> for Deserializer<'a> {
     }
 }
 
+/// Deserialize a value from CDR bytes.
+///
+/// # Errors
+///
+/// Returns an error if the buffer is truncated or does not hold a valid value.
 pub fn from_bytes<'de, T>(buf: &[u8]) -> Result<T>
 where
     T: Deserialize<'de>,
@@ -57,7 +62,7 @@ impl Deserializer<'_> {
             let mut buf = [0];
             self.read_exact(&mut buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf);
+                warn!("found non-zero in padding: {buf:?}");
             }
         }
         let mut buf = [0, 0];
@@ -74,7 +79,7 @@ impl Deserializer<'_> {
             let buf = &mut [0; 3][..(!self.align + 1) & 3];
             self.read_exact(buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf);
+                warn!("found non-zero in padding: {buf:?}");
             }
         }
         let mut buf = [0; 4];
@@ -91,7 +96,7 @@ impl Deserializer<'_> {
             let buf = &mut [0; 7][..(!self.align + 1) & 7];
             self.read_exact(buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf);
+                warn!("found non-zero in padding: {buf:?}");
             }
         }
         let mut buf = [0; 8];
@@ -101,6 +106,17 @@ impl Deserializer<'_> {
         } else {
             u64::from_be_bytes(buf)
         })
+    }
+
+    /// Read `len` bytes, checking they are available before allocating.
+    fn read_vec(&mut self, len: u32) -> Result<Vec<u8>> {
+        let len = len as usize;
+        if self.bytes.len() < len {
+            return Err(Error::Truncated);
+        }
+        let mut buf = vec![0; len];
+        self.read_exact(&mut buf)?;
+        Ok(buf)
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
@@ -115,7 +131,7 @@ impl Deserializer<'_> {
     }
 }
 
-impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
+impl<'de> de::Deserializer<'de> for &mut Deserializer<'_> {
     type Error = Error;
 
     fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
@@ -255,10 +271,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
     {
         trace!("{}deserialize str...", self.indent);
         let len = self.read_u32()?;
-        let mut buf = vec![0; len as usize];
-        if len > 0 {
-            self.read_exact(buf.as_mut())?;
-        }
+        let mut buf = self.read_vec(len)?;
         if let Some(terminator) = buf.pop() {
             if terminator == 0 {
                 let v = core::str::from_utf8(&buf)?;
@@ -278,10 +291,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
     {
         trace!("{}deserialize string...", self.indent);
         let len = self.read_u32()?;
-        let mut buf = vec![0; len as usize];
-        if len > 0 {
-            self.read_exact(buf.as_mut())?;
-        }
+        let mut buf = self.read_vec(len)?;
         if let Some(terminator) = buf.pop() {
             if terminator == 0 {
                 let v = core::str::from_utf8(&buf)?;
@@ -301,10 +311,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
     {
         trace!("{}deserialize bytes...", self.indent);
         let len = self.read_u32()?;
-        let mut buf = vec![0; len as usize];
-        if len > 0 {
-            self.read_exact(buf.as_mut())?;
-        };
+        let buf = self.read_vec(len)?;
         trace!(
             "{}deserialize bytes... {} byte{}",
             self.indent,
@@ -320,13 +327,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
     {
         trace!("{}deserialize byte buf...", self.indent);
         let len = self.read_u32()?;
-        let v = if len == 0 {
-            Vec::with_capacity(0)
-        } else {
-            let mut buf = vec![0; len as usize];
-            self.read_exact(buf.as_mut())?;
-            buf
-        };
+        let v = self.read_vec(len)?;
         trace!(
             "{}deserialize byte buf... {} byte{}",
             self.indent,
@@ -452,18 +453,14 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
                     self.fields = fields;
                     trace!(
                         "{}deserialize field {}::{}...",
-                        self.de.indent,
-                        self.name,
-                        field
+                        self.de.indent, self.name, field
                     );
                     self.de.indent.push();
                     let v = seed.deserialize(&mut *self.de).map(Some);
                     self.de.indent.pop();
                     trace!(
                         "{}deserialize field {}::{}... done",
-                        self.de.indent,
-                        self.name,
-                        field
+                        self.de.indent, self.name, field
                     );
                     v
                 } else {
@@ -598,5 +595,18 @@ impl<'de> de::SeqAccess<'de> for SeqAccess<'_, '_> {
 
     fn size_hint(&self) -> Option<usize> {
         self.size
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::string::String;
+
+    #[test]
+    fn huge_length_is_truncated_not_allocated() {
+        // claimed length 0xFFFF_FFF0, but no payload
+        let buf = [0xff, 0xff, 0xff, 0xf0];
+        assert_eq!(from_bytes::<String>(&buf), Err(Error::Truncated));
     }
 }

@@ -10,7 +10,7 @@ pub type ProfileId = u32;
 
 pub type ProfileData = OctetSeq;
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct TaggedProfile {
     pub tag: ProfileId,
     pub profile_data: ProfileData,
@@ -22,7 +22,7 @@ pub type TaggedProfileSeq = Vec<TaggedProfile>;
 
 // an Interoperable Object Reference is a sequence of
 // object-specific protocol profiles, plus a type ID.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct IOR {
     type_id: String,
     profiles: TaggedProfileSeq,

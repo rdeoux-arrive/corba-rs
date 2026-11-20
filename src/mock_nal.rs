@@ -120,11 +120,10 @@ impl<'a> Stack<'a> {
         self
     }
 
-    fn pop(&mut self, func: &str) -> Expect {
-        match self.expects.pop_front() {
-            None => panic!("expected nothing but got a call to {}()", func),
-            Some(expect) => expect,
-        }
+    fn pop(&mut self, func: &str) -> Expect<'_> {
+        self.expects
+            .pop_front()
+            .unwrap_or_else(|| panic!("expected nothing but got a call to {func}()"))
     }
 }
 
@@ -135,7 +134,7 @@ impl TcpClientStack for Stack<'_> {
     fn socket(&mut self) -> Result<Self::TcpSocket, Self::Error> {
         match self.pop("socket") {
             Expect::Socket { result } => result,
-            expect => panic!("expected {:?} but got a call to socket()", expect),
+            expect => panic!("expected {expect:?} but got a call to socket()"),
         }
     }
 
@@ -145,7 +144,7 @@ impl TcpClientStack for Stack<'_> {
         _addr: SocketAddr,
     ) -> nb::Result<(), Self::Error> {
         let expect = self.pop("connect");
-        panic!("expected {:?} but got a call to connect()", expect);
+        panic!("expected {expect:?} but got a call to connect()");
     }
 
     fn send(&mut self, socket: &mut Self::TcpSocket, buf: &[u8]) -> nb::Result<usize, Self::Error> {
@@ -159,7 +158,7 @@ impl TcpClientStack for Stack<'_> {
                 assert_eq!(buf, expect_buf);
                 result
             }
-            expect => panic!("expected {:?} but got a call to send()", expect),
+            expect => panic!("expected {expect:?} but got a call to send()"),
         }
     }
 
@@ -181,7 +180,7 @@ impl TcpClientStack for Stack<'_> {
                     ok.len()
                 })
             }
-            expect => panic!("expected {:?} but got a call to receive()", expect),
+            expect => panic!("expected {expect:?} but got a call to receive()"),
         }
     }
 
@@ -194,7 +193,7 @@ impl TcpClientStack for Stack<'_> {
                 assert_eq!(socket, expect_socket);
                 result
             }
-            expect => panic!("expected {:?} but got a call to close()", expect),
+            expect => panic!("expected {expect:?} but got a call to close()"),
         }
     }
 }
@@ -211,7 +210,7 @@ impl TcpFullStack for Stack<'_> {
                 assert_eq!(local_port, port);
                 result
             }
-            expect => panic!("expected {:?} but got a call to bind()", expect),
+            expect => panic!("expected {expect:?} but got a call to bind()"),
         }
     }
 
@@ -224,7 +223,7 @@ impl TcpFullStack for Stack<'_> {
                 assert_eq!(*socket, expect_socket);
                 result
             }
-            expect => panic!("expected {:?} but got a call to listen()", expect),
+            expect => panic!("expected {expect:?} but got a call to listen()"),
         }
     }
 
@@ -240,7 +239,7 @@ impl TcpFullStack for Stack<'_> {
                 assert_eq!(*socket, expect_socket);
                 result
             }
-            expect => panic!("expected {:?} but got a call to accept()", expect),
+            expect => panic!("expected {expect:?} but got a call to accept()"),
         }
     }
 }
