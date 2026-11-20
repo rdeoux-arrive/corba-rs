@@ -126,7 +126,7 @@ impl Request<'_> {
             to_bytes(self.byte_order, (message_header, header, body))
         } else {
             let message_header = giop11::MessageHeader::new(self.version, giop11::MsgType::Reply)
-                .with_flags(if self.byte_order { 1 } else { 0 })
+                .with_flags(u8::from(self.byte_order))
                 .with_message_size(message_size);
             to_bytes(self.byte_order, (message_header, header, body))
         }
@@ -149,7 +149,7 @@ where
     tx: Vec<u8>,
 }
 
-impl<'a, S, H> Client<S, H>
+impl<S, H> Client<S, H>
 where
     S: TcpClientStack,
     H: Handler,
@@ -283,7 +283,7 @@ where
         let mut listener = stack.socket()?;
         stack.bind(&mut listener, local_port)?;
         stack.listen(&mut listener)?;
-        info!("server listening on port {}", local_port);
+        info!("server listening on port {local_port}");
         Ok(Self {
             listener,
             factory,
@@ -295,7 +295,7 @@ where
     pub fn poll(&mut self, stack: &mut S) {
         match stack.accept(&mut self.listener) {
             Ok((socket, addr)) => {
-                info!("new client: {}", addr);
+                info!("new client: {addr}");
                 self.clients.push(Client {
                     socket,
                     addr,
@@ -312,7 +312,7 @@ where
                 Err(nb::Error::Other(..)) => {
                     error!("client {} is dead", client.addr);
                     if let Err(err) = stack.close(client.socket) {
-                        error!("failed to close socket: {:?}", err);
+                        error!("failed to close socket: {err:?}");
                     }
                 }
                 _ => self.clients.push(client),
@@ -386,7 +386,7 @@ mod tests {
     }
 
     impl Handler for Test {
-        fn handle<'a>(&mut self, request: Request<'a>) -> cdr::Result<Vec<u8>> {
+        fn handle(&mut self, request: Request<'_>) -> cdr::Result<Vec<u8>> {
             match &request.target {
                 TargetAddress::ObjectKey(object_key) if object_key == b"TEST" => {
                     match request.operation.as_str() {

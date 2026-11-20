@@ -31,8 +31,8 @@ where
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Cdr(err) => write!(f, "serialization failure: {}", err),
-            Self::Stack(err) => write!(f, "network failure: {}", err),
+            Self::Cdr(err) => write!(f, "serialization failure: {err}"),
+            Self::Stack(err) => write!(f, "network failure: {err}"),
         }
     }
 }
@@ -73,11 +73,11 @@ where
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Self::Cdr(err) => write!(f, "deserialization failure: {}", err),
+            Self::Cdr(err) => write!(f, "deserialization failure: {err}"),
             Self::Message => write!(f, "unexpected message type or version"),
             Self::System(err) => write!(f, "system exception: {}", err.exception_id),
-            Self::User(err) => write!(f, "user exception: {}", err),
-            Self::Stack(err) => write!(f, "network failure: {}", err),
+            Self::User(err) => write!(f, "user exception: {err}"),
+            Self::Stack(err) => write!(f, "network failure: {err}"),
         }
     }
 }
@@ -99,7 +99,7 @@ where
     Stack: TcpClientStack,
 {
     /// Create a new CORBA client.
-    pub fn new(stream: Stack::TcpSocket) -> Self {
+    pub const fn new(stream: Stack::TcpSocket) -> Self {
         Self {
             request_id: 0,
             byte_order: false,
@@ -108,6 +108,7 @@ where
     }
 
     /// Change the byte order of the client.
+    #[must_use]
     pub fn with_byte_order(self, byte_order: bool) -> Self {
         Self { byte_order, ..self }
     }
@@ -125,7 +126,7 @@ where
         T: Serialize,
     {
         #[derive(Serialize)]
-        struct Req<T: Serialize> {
+        struct Req<T> {
             message: giop12::MessageHeader,
             request: RequestHeader,
             body: T,
@@ -134,7 +135,7 @@ where
         debug!("send request #{}", self.request_id);
         let mut req = Req {
             message: giop12::MessageHeader::new(Version::GIOP12, MsgType::Request)
-                .with_flags(if self.byte_order { 1 } else { 0 }),
+                .with_flags(u8::from(self.byte_order)),
             request: RequestHeader::new(self.request_id, oneway, target, operation),
             body,
         };

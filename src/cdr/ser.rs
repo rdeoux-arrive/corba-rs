@@ -19,6 +19,7 @@ impl<T> Serializer<T>
 where
     T: Extend<u8>,
 {
+    #[must_use]
     pub fn with_le(self, le: bool) -> Self {
         Self { le, ..self }
     }
@@ -92,7 +93,7 @@ where
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
         trace!("{}serialize {}", self.indent, v);
-        self.write_u8(if v { 1 } else { 0 });
+        self.write_u8(u8::from(v));
         Ok(&self.stream)
     }
 
@@ -187,9 +188,9 @@ where
         Ok(&self.stream)
     }
 
-    fn serialize_some<V: ?Sized>(self, value: &V) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<V>(self, value: &V) -> Result<Self::Ok, Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!("{}serialize Some(..)...", self.indent);
         self.indent.push();
@@ -220,13 +221,13 @@ where
         Ok(&self.stream)
     }
 
-    fn serialize_newtype_struct<V: ?Sized>(
+    fn serialize_newtype_struct<V>(
         self,
         name: &'static str,
         value: &V,
     ) -> Result<Self::Ok, Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!("{}serialize {}...", self.indent, name);
         self.indent.push();
@@ -236,7 +237,7 @@ where
         Ok(&self.stream)
     }
 
-    fn serialize_newtype_variant<V: ?Sized>(
+    fn serialize_newtype_variant<V>(
         self,
         name: &'static str,
         variant_index: u32,
@@ -244,7 +245,7 @@ where
         value: &V,
     ) -> Result<Self::Ok, Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!("{}serialize {}::{}...", self.indent, name, variant);
         self.write_u32(variant_index);
@@ -353,9 +354,9 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_element<V: ?Sized>(&mut self, value: &V) -> Result<(), Self::Error>
+    fn serialize_element<V>(&mut self, value: &V) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         value.serialize(&mut *self.ser)?;
         Ok(())
@@ -375,9 +376,9 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_element<V: ?Sized>(&mut self, value: &V) -> Result<(), Self::Error>
+    fn serialize_element<V>(&mut self, value: &V) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         value.serialize(&mut **self)?;
         Ok(())
@@ -405,9 +406,9 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_field<V: ?Sized>(&mut self, value: &V) -> Result<(), Self::Error>
+    fn serialize_field<V>(&mut self, value: &V) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!("{}serialize field {}...", self.ser.indent, self.name);
         self.ser.indent.push();
@@ -441,9 +442,9 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_field<V: ?Sized>(&mut self, value: &V) -> Result<(), Self::Error>
+    fn serialize_field<V>(&mut self, value: &V) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         value.serialize(&mut *self.ser)?;
         Ok(())
@@ -464,9 +465,9 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_key<V: ?Sized>(&mut self, key: &V) -> Result<(), Self::Error>
+    fn serialize_key<V>(&mut self, key: &V) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!("{}serialize key...", self.indent);
         self.indent.push();
@@ -476,9 +477,9 @@ where
         Ok(())
     }
 
-    fn serialize_value<V: ?Sized>(&mut self, value: &V) -> Result<(), Self::Error>
+    fn serialize_value<V>(&mut self, value: &V) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!("{}serialize value...", self.indent);
         self.indent.push();
@@ -510,13 +511,13 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_field<V: ?Sized>(
+    fn serialize_field<V>(
         &mut self,
         key: &'static str,
         value: &V,
     ) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!(
             "{}serialize field {}::{}...",
@@ -560,13 +561,13 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_field<V: ?Sized>(
+    fn serialize_field<V>(
         &mut self,
         key: &'static str,
         value: &V,
     ) -> Result<(), Self::Error>
     where
-        V: Serialize,
+        V: ?Sized + Serialize,
     {
         trace!(
             "{}serialize {}::{}::{}...",
@@ -599,7 +600,7 @@ where
     T: Serialize,
 {
     let mut serializer = Serializer::default().with_le(le);
-    value.serialize(&mut serializer).map(Vec::clone)
+    value.serialize(&mut serializer).cloned()
 }
 
 pub fn size_of<T>(value: T) -> Result<usize, Error>
@@ -629,40 +630,40 @@ mod tests {
 
     #[test]
     fn serialize_primitive() {
-        assert_eq!(to_bytes(false, &false), Ok(vec![0x00]));
-        assert_eq!(to_bytes(true, &false), Ok(vec![0x00]));
-        assert_eq!(to_bytes(false, &true), Ok(vec![0x01]));
-        assert_eq!(to_bytes(true, &true), Ok(vec![0x01]));
+        assert_eq!(to_bytes(false, false), Ok(vec![0x00]));
+        assert_eq!(to_bytes(true, false), Ok(vec![0x00]));
+        assert_eq!(to_bytes(false, true), Ok(vec![0x01]));
+        assert_eq!(to_bytes(true, true), Ok(vec![0x01]));
 
-        assert_eq!(to_bytes(false, &1_i8), Ok(vec![0x01]));
-        assert_eq!(to_bytes(true, &1_i8), Ok(vec![0x01]));
-        assert_eq!(to_bytes(false, &-2_i8), Ok(vec![0xfe]));
-        assert_eq!(to_bytes(true, &-2_i8), Ok(vec![0xfe]));
+        assert_eq!(to_bytes(false, 1_i8), Ok(vec![0x01]));
+        assert_eq!(to_bytes(true, 1_i8), Ok(vec![0x01]));
+        assert_eq!(to_bytes(false, -2_i8), Ok(vec![0xfe]));
+        assert_eq!(to_bytes(true, -2_i8), Ok(vec![0xfe]));
 
-        assert_eq!(to_bytes(false, &1_i16), Ok(vec![0x00, 0x01]));
-        assert_eq!(to_bytes(true, &1_i16), Ok(vec![0x01, 0x00]));
-        assert_eq!(to_bytes(false, &-2_i16), Ok(vec![0xff, 0xfe]));
-        assert_eq!(to_bytes(true, &-2_i16), Ok(vec![0xfe, 0xff]));
+        assert_eq!(to_bytes(false, 1_i16), Ok(vec![0x00, 0x01]));
+        assert_eq!(to_bytes(true, 1_i16), Ok(vec![0x01, 0x00]));
+        assert_eq!(to_bytes(false, -2_i16), Ok(vec![0xff, 0xfe]));
+        assert_eq!(to_bytes(true, -2_i16), Ok(vec![0xfe, 0xff]));
 
-        assert_eq!(to_bytes(false, &1_i32), Ok(vec![0x00, 0x00, 0x00, 0x01]));
-        assert_eq!(to_bytes(true, &1_i32), Ok(vec![0x01, 0x00, 0x00, 0x00]));
-        assert_eq!(to_bytes(false, &-2_i32), Ok(vec![0xff, 0xff, 0xff, 0xfe]));
-        assert_eq!(to_bytes(true, &-2_i32), Ok(vec![0xfe, 0xff, 0xff, 0xff]));
+        assert_eq!(to_bytes(false, 1_i32), Ok(vec![0x00, 0x00, 0x00, 0x01]));
+        assert_eq!(to_bytes(true, 1_i32), Ok(vec![0x01, 0x00, 0x00, 0x00]));
+        assert_eq!(to_bytes(false, -2_i32), Ok(vec![0xff, 0xff, 0xff, 0xfe]));
+        assert_eq!(to_bytes(true, -2_i32), Ok(vec![0xfe, 0xff, 0xff, 0xff]));
 
         assert_eq!(
-            to_bytes(false, &1_i64),
+            to_bytes(false, 1_i64),
             Ok(vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01])
         );
         assert_eq!(
-            to_bytes(true, &1_i64),
+            to_bytes(true, 1_i64),
             Ok(vec![0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
         );
         assert_eq!(
-            to_bytes(false, &-2_i64),
+            to_bytes(false, -2_i64),
             Ok(vec![0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe])
         );
         assert_eq!(
-            to_bytes(true, &-2_i64),
+            to_bytes(true, -2_i64),
             Ok(vec![0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
         );
     }
@@ -688,6 +689,6 @@ mod tests {
             Ok(vec![
                 0x11, 0x00, 0x22, 0x33, 0x44, 0x00, 0x00, 0x00, 0x55, 0x66, 0x77, 0x88
             ])
-        )
+        );
     }
 }

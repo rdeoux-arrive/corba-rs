@@ -57,7 +57,7 @@ impl Deserializer<'_> {
             let mut buf = [0];
             self.read_exact(&mut buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf);
+                warn!("found non-zero in padding: {buf:?}");
             }
         }
         let mut buf = [0, 0];
@@ -74,7 +74,7 @@ impl Deserializer<'_> {
             let buf = &mut [0; 3][..(!self.align + 1) & 3];
             self.read_exact(buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf);
+                warn!("found non-zero in padding: {buf:?}");
             }
         }
         let mut buf = [0; 4];
@@ -91,7 +91,7 @@ impl Deserializer<'_> {
             let buf = &mut [0; 7][..(!self.align + 1) & 7];
             self.read_exact(buf)?;
             if buf[0] != 0 {
-                warn!("found non-zero in padding: {:?}", buf);
+                warn!("found non-zero in padding: {buf:?}");
             }
         }
         let mut buf = [0; 8];
@@ -115,7 +115,7 @@ impl Deserializer<'_> {
     }
 }
 
-impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
+impl<'de> de::Deserializer<'de> for &mut Deserializer<'_> {
     type Error = Error;
 
     fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
@@ -304,7 +304,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
         let mut buf = vec![0; len as usize];
         if len > 0 {
             self.read_exact(buf.as_mut())?;
-        };
+        }
         trace!(
             "{}deserialize bytes... {} byte{}",
             self.indent,
@@ -321,7 +321,7 @@ impl<'a, 'de> de::Deserializer<'de> for &'a mut Deserializer<'_> {
         trace!("{}deserialize byte buf...", self.indent);
         let len = self.read_u32()?;
         let v = if len == 0 {
-            Vec::with_capacity(0)
+            Vec::new()
         } else {
             let mut buf = vec![0; len as usize];
             self.read_exact(buf.as_mut())?;

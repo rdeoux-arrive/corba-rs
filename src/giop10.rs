@@ -6,7 +6,7 @@ use alloc::string::String;
 use core::fmt::{self, Formatter};
 use serde::{de, ser, Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MsgType {
     Request,
     Reply,
@@ -52,7 +52,7 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer<'_>)> {
         let mut de = Deserializer::from(buf);
         let mut header: Self = Deserialize::deserialize(&mut de)?;
         let de = de.with_le(header.byte_order);
@@ -156,7 +156,7 @@ pub struct RequestHeader {
     pub requesting_principal: OctetSeq,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum ReplyStatusType {
     NoException,
     UserException,

@@ -14,7 +14,7 @@ pub const KEY_ADDR: i16 = 0;
 pub const PROFILE_ADDR: i16 = 1;
 pub const REFERENCE_ADDR: i16 = 2;
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct IORAddressingInfo {
     pub selected_profile_index: u32,
     pub ior: IOR,
@@ -81,8 +81,7 @@ impl<'de> Deserialize<'de> for TargetAddress {
                         Ok(TargetAddress::Ior(ior))
                     }
                     unsupported => Err(Error::custom(format!(
-                        "unsupported enum variant: {0} ({0:#x})",
-                        unsupported
+                        "unsupported enum variant: {unsupported} ({unsupported:#x})"
                     ))),
                 }
             }
@@ -141,7 +140,7 @@ impl RequestHeader {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub enum ReplyStatusType {
     NoException,
     UserException,

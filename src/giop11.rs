@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::giop10::{ReplyHeader, SystemExceptionReplyBody};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MsgType {
     Request,
     Reply,
@@ -32,9 +32,7 @@ pub struct MessageHeader {
 impl MessageHeader {
     #[must_use]
     pub fn new(giop_version: Version, message_type: MsgType) -> Self {
-        if Version::GIOP10 == giop_version {
-            panic!("giop_version should not be {}", stringify!(Version::GIOP10))
-        }
+        assert!(Version::GIOP10 != giop_version, "giop_version should not be {}", stringify!(Version::GIOP10));
         Self {
             magic: Magicn,
             giop_version,
@@ -66,7 +64,7 @@ impl MessageHeader {
         }
     }
 
-    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer<'_>)> {
         let mut de = Deserializer::from(buf);
         let (magic, giop_version, flags) = <(Magicn, Version, u8)>::deserialize(&mut de)?;
         let mut de = de.with_le(flags & 1 != 0);

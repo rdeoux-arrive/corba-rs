@@ -6,9 +6,9 @@ use serde::{de, de::StdError, ser};
 pub type Result<T> = ::core::result::Result<T, Error>;
 
 /// Serialization/deserialization error
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
-    /// Error constructed via the custom() method
+    /// Error constructed via the `custom()` method
     Message(String),
     /// No more bytes at the end of the buffer
     Truncated,
@@ -37,12 +37,12 @@ impl de::Error for Error {
 impl Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Message(msg) => write!(formatter, "{}", msg),
+            Self::Message(msg) => write!(formatter, "{msg}"),
             Self::Truncated => write!(formatter, "Truncated buffer"),
             Self::Bool(_) => write!(formatter, "Invalid boolean value"),
             Self::StringLength => write!(formatter, "Nul string lenght"),
             Self::StringTerminator(_) => write!(formatter, "Invalid string terminator"),
-            Self::Utf8(err) => write!(formatter, "{}", err),
+            Self::Utf8(err) => write!(formatter, "{err}"),
         }
     }
 }

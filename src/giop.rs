@@ -29,7 +29,7 @@ impl Serialize for Magicn {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Version {
     GIOP10,
     GIOP11,
@@ -68,8 +68,7 @@ impl<'de> Deserialize<'de> for Version {
             (1, 3) => Self::GIOP13,
             (major, minor) => {
                 return Err(de::Error::custom(format!(
-                    "Unsupported GIOP version: {}.{}",
-                    major, minor
+                    "Unsupported GIOP version: {major}.{minor}"
                 )))
             }
         };
@@ -99,7 +98,7 @@ pub enum MessageHeader {
 }
 
 impl MessageHeader {
-    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer)> {
+    pub fn deserialize(buf: &[u8]) -> cdr::Result<(Self, Deserializer<'_>)> {
         let mut de = Deserializer::from(buf);
         let magic = Magicn::deserialize(&mut de)?;
         let giop_version = Version::deserialize(&mut de)?;
