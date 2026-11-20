@@ -1,4 +1,7 @@
-use core::net::SocketAddr;
+use core::{
+    fmt::{self, Debug, Display},
+    net::SocketAddr,
+};
 
 use alloc::string::String;
 
@@ -19,6 +22,15 @@ use crate::{
 enum Error<E> {
     Cdr(cdr::Error),
     TcpStack(E),
+}
+
+impl<E: Debug> Display for Error<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Cdr(err) => write!(f, "CDR error: {err}"),
+            Self::TcpStack(err) => write!(f, "TCP stack error: {err:?}"),
+        }
+    }
 }
 
 /// GIOP request
@@ -309,8 +321,8 @@ where
 
         for mut client in core::mem::take(&mut self.clients) {
             match client.poll(stack) {
-                Err(nb::Error::Other(..)) => {
-                    error!("client {} is dead", client.addr);
+                Err(nb::Error::Other(err)) => {
+                    error!("client {} is dead: {err}", client.addr);
                     if let Err(err) = stack.close(client.socket) {
                         error!("failed to close socket: {err:?}");
                     }
