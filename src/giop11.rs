@@ -32,7 +32,11 @@ pub struct MessageHeader {
 impl MessageHeader {
     #[must_use]
     pub fn new(giop_version: Version, message_type: MsgType) -> Self {
-        assert!(Version::GIOP10 != giop_version, "giop_version should not be {}", stringify!(Version::GIOP10));
+        assert!(
+            Version::GIOP10 != giop_version,
+            "giop_version should not be {}",
+            stringify!(Version::GIOP10)
+        );
         Self {
             magic: Magicn,
             giop_version,

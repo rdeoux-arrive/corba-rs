@@ -511,11 +511,7 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_field<V>(
-        &mut self,
-        key: &'static str,
-        value: &V,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<V>(&mut self, key: &'static str, value: &V) -> Result<(), Self::Error>
     where
         V: ?Sized + Serialize,
     {
@@ -561,11 +557,7 @@ where
     type Ok = <&'a mut Serializer<T> as ser::Serializer>::Ok;
     type Error = <&'a mut Serializer<T> as ser::Serializer>::Error;
 
-    fn serialize_field<V>(
-        &mut self,
-        key: &'static str,
-        value: &V,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<V>(&mut self, key: &'static str, value: &V) -> Result<(), Self::Error>
     where
         V: ?Sized + Serialize,
     {
