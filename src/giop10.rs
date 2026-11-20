@@ -4,7 +4,7 @@ use crate::giop::{Magicn, Version};
 use crate::iop::{ObjectKey, ServiceContextList};
 use alloc::string::String;
 use core::fmt::{self, Formatter};
-use serde::{de, ser, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de, ser};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MsgType {

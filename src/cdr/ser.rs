@@ -2,7 +2,7 @@ use super::error::Error;
 use super::indent::Indent;
 use alloc::vec::Vec;
 use log::trace;
-use serde::{ser, Serialize};
+use serde::{Serialize, ser};
 
 #[derive(Default)]
 pub struct Serializer<T>
@@ -278,9 +278,7 @@ where
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
         trace!(
             "{}serialize tuple struct {} ({} fields)...",
-            self.indent,
-            name,
-            len
+            self.indent, name, len
         );
         self.indent.push();
         Ok(Self::SerializeTupleStruct { ser: self, name })
@@ -517,18 +515,14 @@ where
     {
         trace!(
             "{}serialize field {}::{}...",
-            self.ser.indent,
-            self.name,
-            key
+            self.ser.indent, self.name, key
         );
         self.ser.indent.push();
         value.serialize(&mut *self.ser)?;
         self.ser.indent.pop();
         trace!(
             "{}serialize field {}::{}... done",
-            self.ser.indent,
-            self.name,
-            key
+            self.ser.indent, self.name, key
         );
         Ok(())
     }
@@ -563,18 +557,12 @@ where
     {
         trace!(
             "{}serialize {}::{}::{}...",
-            self.ser.indent,
-            self.name,
-            self.variant,
-            key
+            self.ser.indent, self.name, self.variant, key
         );
         value.serialize(&mut *self.ser)?;
         trace!(
             "{}serialize {}::{}::{}... done",
-            self.ser.indent,
-            self.name,
-            self.variant,
-            key
+            self.ser.indent, self.name, self.variant, key
         );
         Ok(())
     }

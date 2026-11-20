@@ -457,18 +457,14 @@ impl<'de> de::Deserializer<'de> for &mut Deserializer<'_> {
                     self.fields = fields;
                     trace!(
                         "{}deserialize field {}::{}...",
-                        self.de.indent,
-                        self.name,
-                        field
+                        self.de.indent, self.name, field
                     );
                     self.de.indent.push();
                     let v = seed.deserialize(&mut *self.de).map(Some);
                     self.de.indent.pop();
                     trace!(
                         "{}deserialize field {}::{}... done",
-                        self.de.indent,
-                        self.name,
-                        field
+                        self.de.indent, self.name, field
                     );
                     v
                 } else {

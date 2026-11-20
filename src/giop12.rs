@@ -1,4 +1,4 @@
-use crate::iop::{ObjectKey, ServiceContextList, TaggedProfile, IOR};
+use crate::iop::{IOR, ObjectKey, ServiceContextList, TaggedProfile};
 use alloc::borrow::ToOwned;
 use alloc::format;
 use alloc::string::String;

@@ -10,7 +10,7 @@ use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cdr::{self, size_of, to_bytes, Deserializer},
+    cdr::{self, Deserializer, size_of, to_bytes},
     giop::{MessageHeader, Version},
     giop10::{self, SystemExceptionReplyBody},
     giop11,
